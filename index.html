@@ -221,6 +221,30 @@
     </ul>
 </script>
 
+<!-- 评论弹窗 -->
+<div id="comment-modal" class="comment-modal">
+    <div class="comment-modal-content">
+        <div class="comment-modal-header">
+            <div class="comment-count">评论 (<span id="current-comment">0</span>/<span id="total-comments">0</span>)</div>
+            <div class="comment-nav">
+                <button id="prev-comment" class="comment-nav-btn" disabled>上一条</button>
+                <button id="next-comment" class="comment-nav-btn" disabled>下一条</button>
+                <button id="close-comment" class="comment-nav-btn">关闭</button>
+            </div>
+        </div>
+        <div class="comment-modal-body">
+            <div class="comment-item">
+                <img id="comment-avatar" class="comment-avatar" src="images/avatar.png" alt="头像">
+                <div class="comment-content">
+                    <div class="comment-user" id="comment-username">用户名</div>
+                    <div class="comment-text" id="comment-content">评论内容</div>
+                    <div class="comment-time" id="comment-time">评论时间</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 </body>
 
 </html>

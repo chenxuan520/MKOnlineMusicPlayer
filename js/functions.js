@@ -1040,3 +1040,182 @@ function playerReaddata(key) {
     key = 'mkPlayer2_' + key;
     return JSON.parse(localStorage.getItem(key));
 }
+
+// 显示评论模态框
+function showCommentModal(index) {
+    if (!rem.comments || rem.comments.length === 0) {
+        layer.msg('暂无评论数据');
+        return;
+    }
+    
+    var comment = rem.comments[index];
+    var avatar = comment.user.avatar || "images/avatar.png";
+    var username = comment.user.name || "匿名用户";
+    var content = comment.content || "暂无评论内容";
+    var time = formatDate(comment.time * 1000);
+    
+    // 更新模态框内容
+    $("#comment-avatar").attr("src", avatar);
+    $("#comment-username").text(username);
+    $("#comment-content").text(content);
+    
+    // 只有在时间有效时才显示时间
+    if (time) {
+        $("#comment-time").text(time).show();
+    } else {
+        $("#comment-time").hide();
+    }
+    
+    // 更新计数显示
+    $("#current-comment").text(index + 1);
+    $("#total-comments").text(rem.comments.length);
+    
+    // 更新导航按钮状态
+    $("#prev-comment").prop("disabled", index === 0);
+    $("#next-comment").prop("disabled", index === rem.comments.length - 1);
+    
+    // 显示模态框 - 使用新的CSS类避免跳动
+    $("#comment-modal").addClass('show');
+}
+
+// 格式化日期函数
+function formatDate(timestamp) {
+    // 检查时间戳是否有效
+    if (!timestamp || isNaN(timestamp)) {
+        return null; // 返回null表示不显示时间
+    }
+    
+    var date = new Date(timestamp);
+    
+    // 检查日期对象是否有效
+    if (isNaN(date.getTime())) {
+        return null;
+    }
+    
+    var year = date.getFullYear();
+    var month = ('0' + (date.getMonth() + 1)).slice(-2);
+    var day = ('0' + date.getDate()).slice(-2);
+    var hours = ('0' + date.getHours()).slice(-2);
+    var minutes = ('0' + date.getMinutes()).slice(-2);
+    
+    return year + '-' + month + '-' + day + ' ' + hours + ':' + minutes;
+}
+
+// 评论模态框事件绑定
+$(document).ready(function() {
+    // 上一条评论
+    $("#prev-comment").click(function() {
+        if (!rem.comments) return;
+        var currentIndex = parseInt($("#current-comment").text()) - 1;
+        if (currentIndex > 0) {
+            showCommentModal(currentIndex - 1);
+        }
+    });
+    
+    // 下一条评论
+    $("#next-comment").click(function() {
+        if (!rem.comments) return;
+        var currentIndex = parseInt($("#current-comment").text()) - 1;
+        if (currentIndex < rem.comments.length - 1) {
+            showCommentModal(currentIndex + 1);
+        }
+    });
+    
+    // 关闭评论模态框
+    $("#close-comment").click(function() {
+        $("#comment-modal").removeClass('show');
+    });
+    
+    // 点击模态框外部关闭
+    $("#comment-modal").click(function(e) {
+        if (e.target === this) {
+            $(this).removeClass('show');
+        }
+    });
+});
+
+// 重写评论函数，使其点击时显示当前正在显示的评论
+function comments(obj) {
+    clearTimeout(rem.commentsTime);
+    $(".banner_text span").text("歌曲热评/评论");
+    $(".banner_text a").attr("href", "javascript:;");
+    $(".banner_text a").removeAttr("target");
+    $(".banner_text img").hide();
+    
+    // 添加点击事件来打开评论模态框
+    $(".banner_text a").off('click.commentModal').on('click.commentModal', function(e) {
+        e.preventDefault();
+        if (rem.comments && rem.comments.length > 0) {
+            // 使用当前显示的评论索引
+            var currentIndex = rem.currentCommentIndex || 0;
+            showCommentModal(currentIndex);
+        } else {
+            layer.msg('暂无评论数据');
+        }
+    });
+    
+    $.ajax({
+        type: mkPlayer.method, 
+        url: mkPlayer.api, 
+        data: "types=comments&id=" + obj.id + "&source=" + obj.source + "&count=50",
+        dataType: mkPlayer.dataType,
+        success: function(jsonData){
+            if (jsonData.hot_comment && jsonData.hot_comment.length) {
+                rem.comments = jsonData.hot_comment;
+            } else if (jsonData.comment && jsonData.comment.length) {
+                rem.comments = jsonData.comment;
+            } else {
+                rem.comments = [];
+                return;
+            }
+            
+            // 限制评论数量，防止过多（可选，根据需要调整）
+            if (rem.comments.length > 50) {
+                rem.comments = rem.comments.slice(0, 50);
+            }
+            
+            // 更新顶部链接，但不添加跳转功能（仅用于显示）
+            if (obj.source === 'netease') {
+                $(".banner_text a").attr("href", "https://music.163.com/#/song?id="+obj.id+"#comment-box");
+            } else if (obj.source === 'kugou') {
+                $(".banner_text a").attr("href", "https://www.kugou.com/song/#hash="+obj.id);
+            } else if (obj.source === 'tencent') {
+                $(".banner_text a").attr("href", "https://y.qq.com/n/yqq/song/"+obj.id+".html#comment_box");
+            } else if (obj.source === 'xiami') {
+                $(".banner_text a").attr("href", "https://www.xiami.com/song/"+obj.id+"#comments");
+            } else if (obj.source === 'baidu') {
+            
+            }
+            
+            // 设置为非外部链接
+            $(".banner_text a").removeAttr("target");
+            
+            var avatarDom = new Image();
+            (function nextComment (commentsIndex) {
+                if (commentsIndex === undefined || commentsIndex === rem.comments.length-1) {
+                    commentsIndex = 0;
+                } else {
+                    commentsIndex++;
+                }
+                
+                // 保存当前评论索引
+                rem.currentCommentIndex = commentsIndex;
+
+                var avatarSrc = (rem.comments[commentsIndex].user.avatar ? rem.comments[commentsIndex].user.avatar : "images/avatar.png") + '?t=' + Math.random();
+                avatarDom.src = avatarSrc;
+                avatarDom.onload = function () {
+                    $(".banner_text span").text(rem.comments[commentsIndex].content);
+                    $(".banner_text img").show().attr("src", avatarSrc);
+
+                    rem.commentsTime = setTimeout(function () {
+                        nextComment(commentsIndex)
+                    }, 5000)
+                }
+            })()
+        },   //success
+        error: function(XMLHttpRequest, textStatus, errorThrown) {
+            layer.msg('歌曲评论获取失败 - ' + XMLHttpRequest.status);
+            console.error(XMLHttpRequest + textStatus + errorThrown);
+        }   // error
+    });//ajax
+}
