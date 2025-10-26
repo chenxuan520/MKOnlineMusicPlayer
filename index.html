@@ -61,6 +61,15 @@
 </head>
 <body>
 
+<div id="password-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #222; z-index: 9999; display: flex; justify-content: center; align-items: center;">
+    <div style="text-align: center; background-color: #333; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+        <h2 style="color: #eee; margin-bottom: 20px;">请输入密码</h2>
+        <input type="password" id="password-input" placeholder="密码" style="padding: 10px; margin-bottom: 15px; border: 1px solid #555; border-radius: 4px; width: 200px; background-color: #444; color: #eee;">
+        <button id="password-submit" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">进入</button>
+        <p id="password-error" style="color: #ff6b6b; margin-top: 10px; display: none;">密码错误，请重试。</p>
+    </div>
+</div>
+
 <div id="blur-img"></div>
 
 <!-- 头部logo -->
@@ -215,4 +224,3 @@
 </body>
 
 </html>
-

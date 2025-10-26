@@ -23,6 +23,64 @@ var mkPlayer = {
     debug: false   // 是否开启调试模式(true/false)
 };
 
+// 硬编码密码
+const PASSWORD = "123456"; // 默认密码，请修改！
+
+// 页面加载完成后执行
+$(function() {
+    // 检查是否需要密码验证
+    if (localStorage.getItem('mkplayer_authenticated') === 'true') {
+        $('#password-overlay').hide();
+    } else {
+        $('#password-overlay').show();
+    }
+
+    $('#password-submit').on('click', function() {
+        checkPassword();
+    });
+
+    $('#password-input').on('keypress', function(e) {
+        if (e.which == 13) { // Enter 键
+            checkPassword();
+        }
+    });
+
+    function checkPassword() {
+        const inputPassword = $('#password-input').val();
+        if (inputPassword === PASSWORD) {
+            localStorage.setItem('mkplayer_authenticated', 'true');
+            $('#password-overlay').fadeOut(300, function() {
+                $(this).remove(); // 移除覆盖层
+            });
+            // 密码正确后，可以执行播放器初始化等操作
+            // 这里假设播放器初始化在其他地方，或者在密码验证成功后才开始加载
+            // 如果播放器初始化依赖于密码验证，可能需要在这里调用相关初始化函数
+            if (mkPlayer.placard) {
+                // 确保 layui.layer 已经加载
+                layui.use('layer', function(){
+                    var layer = layui.layer;
+                    layer.config({
+                        shade: [0.25,'#000'],
+                        shadeClose: true
+                    });
+                    layer.open({
+                        btn: ['我知道了'],
+                        title: '公告',
+                        maxWidth: 320,
+                        content: $('#layer-placard-box').html()
+                    });
+                });
+            }
+        } else {
+            $('#password-error').fadeIn(200).delay(1500).fadeOut(200);
+            $('#password-input').val(''); // 清空输入框
+        }
+    }
+});
+
+
+
+
 
 
 /*******************************************************

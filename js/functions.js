@@ -32,21 +32,6 @@ var form;
 layui.use(['layer', 'form'], function(){
     layer = layui.layer;
     form = layui.form;
-    if (mkPlayer.placard) {
-        layer.config({
-            shade: [0.25,'#000'],
-            shadeClose: true
-        })
-
-        window.onload = function () {
-            layer.open({
-                btn: ['我知道了'],
-                title: '公告',
-                maxWidth: 320,
-                content: $('#layer-placard-box').html()
-            });
-        };
-    }
 });
 
 $(function(){

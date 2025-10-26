@@ -380,6 +380,20 @@ php 5.4+, curl_exec, file_get_contents, json_decode, openssl_encrypt
 #### 播放器DIY教程
 除了自定义播放列表，本播放器还支持一些 DIY 设定，比如修改 api.php 文件的默认路径、修改搜索框的默认搜索内容等。具体请打开 `js/player.js` 查看
 
+#### 密码设置
+为了保护您的音乐播放器，我们添加了密码功能。默认密码为 `mkplayer`。
+
+**如何修改密码：**
+1. 打开 `js/player.js` 文件。
+2. 找到以下代码行：
+   ```javascript
+   const PASSWORD = "mkplayer"; // 默认密码，请修改！
+   ```
+3. 将 `"mkplayer"` 替换为您想要设置的新密码。
+4. 保存文件。
+
+**注意：** 密码直接硬编码在 `js/player.js` 文件中，请确保您了解其安全性影响。
+
 #### rem 变量表
 程序中的rem数组用于存储全局变量，具体的成员(部分)及作用见下表：
 
