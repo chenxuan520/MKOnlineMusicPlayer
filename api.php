@@ -26,6 +26,7 @@ define('HTTPS', true);    // 如果您的网站启用了https，请将此项置�
 define('DEBUG', false);      // 是否开启调试模式，正常使用时请将此项置为“false”
 define('JSONP', false);      // 是否开启JSONP模式，使用远程api时请开启
 define('CACHE_PATH', 'cache/');     // 文件缓存目录,请确保该目录存在且有读写权限。如无需缓存，可将此行注释掉
+define('TEMP_PATH', 'temp/');       // 临时文件目录，用于存放下载的歌曲，请确保该目录存在且有读写权限。
 
 /*
  如果遇到程序不能正常运行，请开启调试模式，然后访问 http://你的网站/音乐播放器地址/api.php ，进入服务器运行环境检测。
@@ -57,6 +58,8 @@ if($source == 'kugou' || $source == 'baidu' || $source == 'tencent') {
 
 // 没有缓存文件夹则创建
 if(defined('CACHE_PATH') && !is_dir(CACHE_PATH)) createFolders(CACHE_PATH);
+// 没有临时文件夹则创建
+if(defined('TEMP_PATH') && !is_dir(TEMP_PATH)) createFolders(TEMP_PATH);
 
 $types = getParam('types');
 switch($types)   // 根据请求的 Api，执行相应操作
@@ -217,40 +220,56 @@ switch($types)   // 根据请求的 Api，执行相应操作
 
         $data = $DOWNLOAD->download($url, $name, $artist);
 
+        if (DEBUG) {
+            // 在调试模式下，打印出文件路径和下载 URL
+            $filepath_debug = dirname(dirname(__FILE__)).'/temp/'.$source.'/'.$name.$artist.'.mp3';
+            $protocol_debug = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')) ? 'https://' : 'http://'; 
+            $downpath_debug = $protocol_debug.$_SERVER['HTTP_HOST'].'/temp/'.$source.'/'.$name.$artist.'.mp3';
+            error_log("Download filepath: " . $filepath_debug);
+            error_log("Download URL: " . $downpath_debug);
+            error_log("Download result: " . $data);
+        }
+
         echojson($data);
         break;
     
     case 'cache':
-        $minute = getParam('minute', 30);   // 删除几分钟之前的文件
+        $minute = getParam('minute', 2);   // 删除几分钟之前的文件，默认为 2 分钟
+        $target_path = getParam('target_path', CACHE_PATH); // 目标目录，默认为 CACHE_PATH
+        $file_ext = getParam('file_ext', 'json'); // 文件扩展名，默认为 json
 
         date_default_timezone_set('Asia/Shanghai'); // 如果时区不同请自行设置时区
 
-        $list = scandir(CACHE_PATH);
-        $jsonList = array();
-
-        foreach ($list as $val) {
-            $filePath = CACHE_PATH.$val;
-            if (is_file($filePath) && pathinfo($filePath, PATHINFO_EXTENSION) === 'json') {
-                array_push($jsonList, $filePath);
-            }
+        // 确保目标目录存在且可读写
+        if (!is_dir($target_path)) {
+            echojson(json_encode(array('code' => 0, 'msg' => '目标目录不存在或不可访问。')));
+            break;
         }
 
         $data = array();
-        foreach($jsonList as $val) {
-            if (strtotime('+'.$minute.' minute', filemtime($val)) <= time()) {
-                $filetime = date('Y-m-d H:i:s', filemtime($val));
-                if (unlink($val)) {
-                    array_push($data, array(
-                        'msg' => '删除成功。',
-                        'time' => $filetime,
-                        'file' => $val,
-                    )); 
-                } else {
-                    array_push($data, array(
-                        'msg' => '删除失败，请检查文件权限或其他问题。',
-                        'time' => $filetime,
-                        'file' => $val,
-                    ));
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($target_path, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($iterator as $fileinfo) {
+            if ($fileinfo->isFile() && $fileinfo->getExtension() === $file_ext) {
+                $filePath = $fileinfo->getPathname();
+                if (strtotime('+'.$minute.' minute', $fileinfo->getMTime()) <= time()) {
+                    $filetime = date('Y-m-d H:i:s', $fileinfo->getMTime());
+                    if (unlink($filePath)) {
+                        array_push($data, array(
+                            'msg' => '删除成功。',
+                            'time' => $filetime,
+                            'file' => $filePath,
+                        )); 
+                    } else {
+                        array_push($data, array(
+                            'msg' => '删除失败，请检查文件权限或其他问题。',
+                            'time' => $filetime,
+                            'file' => $filePath,
+                        ));
+                    }
                 }
             }
         }

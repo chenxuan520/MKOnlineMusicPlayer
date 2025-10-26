@@ -304,6 +304,24 @@ $(function(){
     } else if (!mkPlayer.comments) {
         $('.banner_text').hide();
     }
+
+    // 页面加载完成后，触发一次 temp 目录的清理
+    $.ajax({
+        type: mkPlayer.method,
+        url: mkPlayer.api,
+        data: 'types=cache&target_path=' + encodeURIComponent(mkPlayer.tempPath) + '&file_ext=mp3&minute=2',
+        dataType: 'json',
+        success: function(jsonData){
+            if (mkPlayer.debug) {
+                console.log('Temp 目录清理结果:', jsonData);
+            }
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown) {
+            if (mkPlayer.debug) {
+                console.error('Temp 目录清理失败:', XMLHttpRequest + textStatus + errorThrown);
+            }
+        }
+    });
 });
 
 // 播放时长处理函数
@@ -545,42 +563,9 @@ function download(music) {
         layer.msg('这首歌不支持下载');
         return;
     }
-    var loadMsg = layer.msg('正在请求远程服务器，如果10秒后没有开始下载请重试', {
-        time: 10000
-    });
-    var load = layer.load(0, {
-        shade: [0.25,,'#000'],
-    });
-    var loading = setTimeout(function () {
-        layer.close(load);
-        layer.close(loadMsg);
-        layer.msg('下载请求歌曲链接失败，请检查网络或稍后再试');
-    }, 10000)
-    $.ajax({ 
-        type: mkPlayer.method,
-        url: mkPlayer.api,
-        data: 'types=download&artist=' + music.artist + '&name=' + music.name + '&source=' + music.source + '&url=' + encodeURIComponent(music.url),
-        dataType: 'json',
-        timeout: 10000,
-        success: function(jsonData){
-            layer.closeAll();
-            clearInterval(loading);
-            if (jsonData.code == 1) {
-                if ($('.download').length) {
-                    $('.download').remove();
-                }
-                var downDom = $('<iframe class="download" style="height: 0;width: 0;display: none;"></iframe>');
-                downDom[0].src = jsonData.url;
-                $('body').append(downDom);
-            } else {
-                layer.msg(jsonData.msg);
-            }
-        },
-        error: function(XMLHttpRequest, textStatus, errorThrown) {
-            layer.msg('下载失败，服务器错误 - ' + XMLHttpRequest.status);
-            console.error(XMLHttpRequest + textStatus + errorThrown);
-        }
-    });
+    // 直接打开歌曲的原始 URL 进行下载
+    window.open(music.url);
+    layer.msg('正在尝试下载歌曲...');
 }
 
 // 获取外链的ajax回调函数
