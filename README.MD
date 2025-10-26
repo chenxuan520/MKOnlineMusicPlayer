@@ -31,6 +31,144 @@ MxuePlay是MKOnlineMusicPlayer的优化版，MKOnlineMusicPlayer 是一款开源
 
 **GitHub** [https://github.com/mxue12138/MKOnlineMusicPlayer](https://github.com/mxue12138/MKOnlineMusicPlayer)(本人升级优化版)
 
+### 本地部署
+-----
+本项目支持通过 Docker 或 Apache 进行本地部署。
+
+#### 使用 Docker 部署 (推荐)
+1.  **安装 Docker 和 Docker Compose**: 确保您的系统已安装 Docker 和 Docker Compose。您可以访问 [Docker 官方网站](https://docs.docker.com/get-docker/) 获取安装指南。
+2.  **克隆项目**:
+    ```bash
+    git clone https://github.com/mxue12138/MKOnlineMusicPlayer.git
+    cd MKOnlineMusicPlayer
+    ```
+3.  **启动服务**: 在项目根目录下执行以下命令启动服务：
+    ```bash
+    docker-compose up -d
+    ```
+    这将启动一个 Nginx 服务器和一个 PHP-FPM 服务。
+4.  **访问应用**: 默认情况下，应用将在 `http://localhost:4000` 运行。如果需要修改端口，请编辑 `docker-compose.yml` 文件中的 `ports` 配置，然后重新创建容器：
+    ```bash
+    docker-compose down && docker-compose up -d
+    ```
+
+#### 使用 Apache 部署
+1.  **安装 Apache 和 PHP**: 确保您的系统已安装 Apache Web 服务器和 PHP (版本 5.4+)。同时，确保 PHP 已启用 `curl_exec`, `file_get_contents`, `json_decode`, `openssl_encrypt` 等扩展。
+2.  **克隆项目**:
+    ```bash
+    git clone https://github.com/mxue12138/MKOnlineMusicPlayer.git
+    cd MKOnlineMusicPlayer
+    ```
+3.  **配置 Apache 虚拟主机**:
+    创建一个 Apache 虚拟主机配置文件 (例如 `mk_music_player.conf`)，并将其放置在 Apache 的配置目录中 (通常是 `/etc/apache2/sites-available/` 或 `/etc/httpd/conf.d/`)。将 `你的网站绝对路径` 替换为项目的实际路径。
+    ```apache
+    <VirtualHost *:80>
+        ServerAdmin webmaster@localhost
+        DocumentRoot "你的网站绝对路径"
+        <Directory "你的网站绝对路径">
+            Options Indexes FollowSymLinks
+            AllowOverride All
+            Require all granted
+        </Directory>
+
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+        # 必要配置：清除缓存
+        # 请务必添加以下代码到cron定时任务，并设置成每分钟执行一次，否则会导致用户歌单、歌曲列表、歌词等更新不及时
+        # find 你的网站绝对路径/cache/*.json -type f -cmin +30 -exec rm -fv {} \;
+
+        # 必要配置：下载歌曲
+        <Directory "你的网站绝对路径/temp/">
+            Header set Content-Type "application/octet-stream"
+            Header set Content-Disposition "attachment;"
+        </Directory>
+
+        # 跨域设置 (如果网站和接口不在一台服务器上)
+        # Header set Access-Control-Allow-Origin "*"
+        # Header set Access-Control-Allow-Headers "X-Requested-With"
+        # Header set Access-Control-Allow-Methods "GET,POST,OPTIONS"
+    </VirtualHost>
+    ```
+4.  **启用虚拟主机并重启 Apache**:
+    ```bash
+    sudo a2ensite mk_music_player.conf # 对于 Debian/Ubuntu
+    sudo systemctl restart apache2     # 对于 Debian/Ubuntu
+    # 或者
+    # sudo systemctl restart httpd     # 对于 CentOS/RHEL
+    ```
+5.  **配置 `api.php`**: 确保 `api.php` 文件中的缓存和下载路径配置正确。
+6.  **访问应用**: 通过您配置的域名或 IP 地址访问应用。
+
+### 本地部署
+-----
+本项目支持通过 Docker 或 Apache 进行本地部署。
+
+#### 使用 Docker 部署 (推荐)
+1.  **安装 Docker 和 Docker Compose**: 确保您的系统已安装 Docker 和 Docker Compose。您可以访问 [Docker 官方网站](https://docs.docker.com/get-docker/) 获取安装指南。
+2.  **克隆项目**:
+    ```bash
+    git clone https://github.com/mxue12138/MKOnlineMusicPlayer.git
+    cd MKOnlineMusicPlayer
+    ```
+3.  **启动服务**: 在项目根目录下执行以下命令启动服务：
+    ```bash
+    docker-compose up -d
+    ```
+    这将启动一个 Nginx 服务器和一个 PHP-FPM 服务。
+4.  **访问应用**: 默认情况下，应用将在 `http://localhost:4000` 运行。如果需要修改端口，请编辑 `docker-compose.yml` 文件中的 `ports` 配置，然后重新创建容器：
+    ```bash
+    docker-compose down && docker-compose up -d
+    ```
+
+#### 使用 Apache 部署
+1.  **安装 Apache 和 PHP**: 确保您的系统已安装 Apache Web 服务器和 PHP (版本 5.4+)。同时，确保 PHP 已启用 `curl_exec`, `file_get_contents`, `json_decode`, `openssl_encrypt` 等扩展。
+2.  **克隆项目**:
+    ```bash
+    git clone https://github.com/mxue12138/MKOnlineMusicPlayer.git
+    cd MKOnlineMusicPlayer
+    ```
+3.  **配置 Apache 虚拟主机**:
+    创建一个 Apache 虚拟主机配置文件 (例如 `mk_music_player.conf`)，并将其放置在 Apache 的配置目录中 (通常是 `/etc/apache2/sites-available/` 或 `/etc/httpd/conf.d/`)。将 `你的网站绝对路径` 替换为项目的实际路径。
+    ```apache
+    <VirtualHost *:80>
+        ServerAdmin webmaster@localhost
+        DocumentRoot "你的网站绝对路径"
+        <Directory "你的网站绝对路径">
+            Options Indexes FollowSymLinks
+            AllowOverride All
+            Require all granted
+        </Directory>
+
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+        # 必要配置：清除缓存
+        # 请务必添加以下代码到cron定时任务，并设置成每分钟执行一次，否则会导致用户歌单、歌曲列表、歌词等更新不及时
+        # find 你的网站绝对路径/cache/*.json -type f -cmin +30 -exec rm -fv {} \;
+
+        # 必要配置：下载歌曲
+        <Directory "你的网站绝对路径/temp/">
+            Header set Content-Type "application/octet-stream"
+            Header set Content-Disposition "attachment;"
+        </Directory>
+
+        # 跨域设置 (如果网站和接口不在一台服务器上)
+        # Header set Access-Control-Allow-Origin "*"
+        # Header set Access-Control-Allow-Headers "X-Requested-With"
+        # Header set Access-Control-Allow-Methods "GET,POST,OPTIONS"
+    </VirtualHost>
+    ```
+4.  **启用虚拟主机并重启 Apache**:
+    ```bash
+    sudo a2ensite mk_music_player.conf # 对于 Debian/Ubuntu
+    sudo systemctl restart apache2     # 对于 Debian/Ubuntu
+    # 或者
+    # sudo systemctl restart httpd     # 对于 CentOS/RHEL
+    ```
+5.  **配置 `api.php`**: 确保 `api.php` 文件中的缓存和下载路径配置正确。
+6.  **访问应用**: 通过您配置的域名或 IP 地址访问应用。
+
 ### 注意事项
 -----
 #### Docker

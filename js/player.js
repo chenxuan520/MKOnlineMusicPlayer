@@ -332,7 +332,17 @@ function play(music) {
         }
         rem.audio[0].pause();
         rem.audio.attr('src', music.url);
-        rem.audio[0].play();
+
+        // 监听 canplaythrough 事件，确保获取到歌曲时长
+        $(rem.audio[0]).one('canplaythrough', function() {
+            if (rem.audio[0].duration < 60) { // 如果歌曲时长短于一分钟 (60秒)
+                rem.audio[0].pause();
+                layer.msg('歌曲无法播放已自动跳过');
+                autoNextMusic(); // 自动播放下一首
+                return;
+            }
+            rem.audio[0].play();
+        });
     } catch(e) {
         audioErr(); // 调用错误处理函数
         return;
