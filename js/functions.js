@@ -1077,7 +1077,18 @@ $(document).ready(function() {
 
 // 重写评论函数，使其点击时显示当前正在显示的评论
 function comments(obj) {
-    clearTimeout(rem.commentsTime);
+    // 每次调用 comments 函数时，生成一个新的评论轮播 ID
+    if (typeof rem.currentCommentReqId === 'undefined') {
+        rem.currentCommentReqId = 0;
+    }
+    rem.currentCommentReqId++;
+    var thisReqId = rem.currentCommentReqId;
+    
+    // 清理之前的评论定时器
+    if (rem.commentsTime) {
+        clearTimeout(rem.commentsTime);
+    }
+    
     $(".banner_text span").text("歌曲热评/评论");
     $(".banner_text a").attr("href", "javascript:;");
     $(".banner_text a").removeAttr("target");
@@ -1101,6 +1112,11 @@ function comments(obj) {
         data: "types=comments&id=" + obj.id + "&source=" + obj.source + "&count=100",
         dataType: mkPlayer.dataType,
         success: function(jsonData){
+            // 检查这个响应是否仍然有效（即，用户没有在加载期间切换到其他歌曲）
+            if (thisReqId !== rem.currentCommentReqId) {
+                return; // 如果请求ID不匹配，说明用户已经切换到其他歌曲，停止处理
+            }
+            
             if (jsonData.hot_comment && jsonData.hot_comment.length) {
                 rem.comments = jsonData.hot_comment;
             } else if (jsonData.comment && jsonData.comment.length) {
@@ -1132,6 +1148,11 @@ function comments(obj) {
             $(".banner_text a").removeAttr("target");
             
             (function nextComment (commentsIndex) {
+                // 在每次执行前检查当前请求ID是否仍有效
+                if (thisReqId !== rem.currentCommentReqId) {
+                    return; // 如果请求ID不匹配，停止评论轮播
+                }
+                
                 if (commentsIndex === undefined || commentsIndex === rem.comments.length-1) {
                     commentsIndex = 0;
                 } else {
@@ -1149,11 +1170,18 @@ function comments(obj) {
 
                 // 设置定时器切换到下一个评论，不依赖于图片加载
                 rem.commentsTime = setTimeout(function () {
-                    nextComment(commentsIndex)
+                    // 在执行下一次调用前，检查当前请求ID是否仍有效
+                    if (thisReqId === rem.currentCommentReqId && rem.comments && rem.comments.length > 0) {
+                        nextComment(commentsIndex);
+                    }
                 }, 5000);  // 设置为5秒，减慢滚动速度
             })()
         },   //success
         error: function(XMLHttpRequest, textStatus, errorThrown) {
+            // 即使出错也检查请求ID是否仍然有效
+            if (thisReqId !== rem.currentCommentReqId) {
+                return; // 如果请求ID不匹配，忽略错误响应
+            }
             layer.msg('歌曲评论获取失败 - ' + XMLHttpRequest.status);
             console.error(XMLHttpRequest + textStatus + errorThrown);
         }   // error
