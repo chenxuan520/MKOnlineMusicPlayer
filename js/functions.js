@@ -1157,7 +1157,7 @@ function comments(obj) {
     $.ajax({
         type: mkPlayer.method, 
         url: mkPlayer.api, 
-        data: "types=comments&id=" + obj.id + "&source=" + obj.source + "&count=50",
+        data: "types=comments&id=" + obj.id + "&source=" + obj.source + "&count=100",
         dataType: mkPlayer.dataType,
         success: function(jsonData){
             if (jsonData.hot_comment && jsonData.hot_comment.length) {
@@ -1170,8 +1170,8 @@ function comments(obj) {
             }
             
             // 限制评论数量，防止过多（可选，根据需要调整）
-            if (rem.comments.length > 50) {
-                rem.comments = rem.comments.slice(0, 50);
+            if (rem.comments.length > 100) {
+                rem.comments = rem.comments.slice(0, 100);
             }
             
             // 更新顶部链接，但不添加跳转功能（仅用于显示）
@@ -1190,7 +1190,6 @@ function comments(obj) {
             // 设置为非外部链接
             $(".banner_text a").removeAttr("target");
             
-            var avatarDom = new Image();
             (function nextComment (commentsIndex) {
                 if (commentsIndex === undefined || commentsIndex === rem.comments.length-1) {
                     commentsIndex = 0;
@@ -1202,15 +1201,15 @@ function comments(obj) {
                 rem.currentCommentIndex = commentsIndex;
 
                 var avatarSrc = (rem.comments[commentsIndex].user.avatar ? rem.comments[commentsIndex].user.avatar : "images/avatar.png") + '?t=' + Math.random();
-                avatarDom.src = avatarSrc;
-                avatarDom.onload = function () {
-                    $(".banner_text span").text(rem.comments[commentsIndex].content);
-                    $(".banner_text img").show().attr("src", avatarSrc);
+                
+                // 立即更新文字内容
+                $(".banner_text span").text(rem.comments[commentsIndex].content);
+                $(".banner_text img").show().attr("src", avatarSrc);
 
-                    rem.commentsTime = setTimeout(function () {
-                        nextComment(commentsIndex)
-                    }, 5000)
-                }
+                // 设置定时器切换到下一个评论，不依赖于图片加载
+                rem.commentsTime = setTimeout(function () {
+                    nextComment(commentsIndex)
+                }, 5000);  // 设置为5秒，减慢滚动速度
             })()
         },   //success
         error: function(XMLHttpRequest, textStatus, errorThrown) {
