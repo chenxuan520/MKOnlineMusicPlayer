@@ -995,9 +995,16 @@ function showCommentModal(index) {
     var content = comment.content || "暂无评论内容";
     var time = formatDate(comment.time * 1000);
     
+    // 判断当前评论是热门评论还是普通评论
+    var isHotComment = false;
+    if (typeof rem.hotCommentsCount !== 'undefined' && index < rem.hotCommentsCount) {
+        isHotComment = true;
+    }
+    var commentType = isHotComment ? "【热门评论】" : "【普通评论】";
+    
     // 更新模态框内容
     $("#comment-avatar").attr("src", avatar);
-    $("#comment-username").text(username);
+    $("#comment-username").html('<span style="color: #ff6b35; font-weight: bold;">' + commentType + '</span> ' + username);
     $("#comment-content").text(content);
     
     // 只有在时间有效时才显示时间
@@ -1117,18 +1124,27 @@ function comments(obj) {
                 return; // 如果请求ID不匹配，说明用户已经切换到其他歌曲，停止处理
             }
             
-            if (jsonData.hot_comment && jsonData.hot_comment.length) {
-                rem.comments = jsonData.hot_comment;
-            } else if (jsonData.comment && jsonData.comment.length) {
-                rem.comments = jsonData.comment;
+            // 保存原始评论数据
+            var hotComments = jsonData.hot_comment && jsonData.hot_comment.length ? jsonData.hot_comment : [];
+            var normalComments = jsonData.comment && jsonData.comment.length ? jsonData.comment : [];
+            
+            // 优先使用热门评论，如果没有热门评论则使用普通评论
+            // 如果有热门评论，就将热门评论和前50条普通评论合并
+            if (hotComments.length > 0) {
+                rem.comments = hotComments.concat(normalComments.slice(0, 50)); // 热门评论 + 前50条普通评论
+            } else if (normalComments.length > 0) {
+                rem.comments = normalComments;
             } else {
                 rem.comments = [];
                 return;
             }
             
-            // 限制评论数量，防止过多（可选，根据需要调整）
-            if (rem.comments.length > 100) {
-                rem.comments = rem.comments.slice(0, 100);
+            // 保存热门评论数量，用于判断某条评论是否为热门评论
+            rem.hotCommentsCount = hotComments.length;
+            
+            // 限制评论总数，防止过多（可选，根据需要调整）
+            if (rem.comments.length > 150) { // 增加限制到150条（热门+普通评论）
+                rem.comments = rem.comments.slice(0, 150);
             }
             
             // 更新顶部链接，但不添加跳转功能（仅用于显示）
