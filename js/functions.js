@@ -421,65 +421,6 @@ function thisDownload(obj) {
 }
 
 // 获取并设置评论
-function comments(obj) {
-    clearTimeout(rem.commentsTime);
-    $(".banner_text span").text("歌曲热评/评论");
-    $(".banner_text a").attr("href", "javascript:;");
-    $(".banner_text a").removeAttr("target");
-    $(".banner_text img").hide();
-    $.ajax({
-        type: mkPlayer.method, 
-        url: mkPlayer.api, 
-        data: "types=comments&id=" + obj.id + "&source=" + obj.source,
-        dataType: mkPlayer.dataType,
-        success: function(jsonData){
-            if (jsonData.hot_comment && jsonData.hot_comment.length) {
-                rem.comments = jsonData.hot_comment;
-            } else if (jsonData.comment && jsonData.comment.length) {
-                rem.comments = jsonData.comment;
-            } else {
-                rem.comments = [];
-                return;
-            }
-            if (obj.source === 'netease') {
-                $(".banner_text a").attr("href", "https://music.163.com/#/song?id="+obj.id+"#comment-box");
-            } else if (obj.source === 'kugou') {
-                $(".banner_text a").attr("href", "https://www.kugou.com/song/#hash="+obj.id);
-            } else if (obj.source === 'tencent') {
-                $(".banner_text a").attr("href", "https://y.qq.com/n/yqq/song/"+obj.id+".html#comment_box");
-            } else if (obj.source === 'xiami') {
-                $(".banner_text a").attr("href", "https://www.xiami.com/song/"+obj.id+"#comments");
-            } else if (obj.source === 'baidu') {
-            
-            }
-            $(".banner_text a").attr("target", "_blank");
-            var avatarDom = new Image();
-            (function nextComment (commentsIndex) {
-                if (commentsIndex === undefined || commentsIndex === rem.comments.length-1) {
-                    commentsIndex = 0;
-                } else {
-                    commentsIndex++;
-                }
-
-                var avatarSrc = (rem.comments[commentsIndex].user.avatar ? rem.comments[commentsIndex].user.avatar : "images/avatar.png") + '?t=' + Math.random();
-                avatarDom.src = avatarSrc;
-                avatarDom.onload = function () {
-                    $(".banner_text span").text(rem.comments[commentsIndex].content);
-                    $(".banner_text img").show().attr("src", avatarSrc);
-    
-                    rem.commentsTime = setTimeout(function () {
-                        nextComment(commentsIndex)
-                    }, 5000)
-                }
-            })()
-        },   //success
-        error: function(XMLHttpRequest, textStatus, errorThrown) {
-            layer.msg('歌曲评论获取失败 - ' + XMLHttpRequest.status);
-            console.error(XMLHttpRequest + textStatus + errorThrown);
-        }   // error
-    });//ajax
-}
-
 // 下载封面
 function thisDownloadPic (obj) {
     var music = musicList[$(obj).data("list")].item[$(obj).data("index")];
@@ -1200,7 +1141,7 @@ function comments(obj) {
                 // 保存当前评论索引
                 rem.currentCommentIndex = commentsIndex;
 
-                var avatarSrc = (rem.comments[commentsIndex].user.avatar ? rem.comments[commentsIndex].user.avatar : "images/avatar.png") + '?t=' + Math.random();
+                var avatarSrc = (rem.comments[commentsIndex].user.avatar ? rem.comments[commentsIndex].user.avatar : "images/avatar.png");
                 
                 // 立即更新文字内容
                 $(".banner_text span").text(rem.comments[commentsIndex].content);
