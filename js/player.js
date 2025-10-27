@@ -540,7 +540,6 @@ mkpgb.prototype = {
     }
 };  
 
-// 快捷键切歌，代码来自 @茗血(https://www.52benxi.cn/)
 document.onkeydown = function showkey(e) {
     var key = e.keyCode || e.which || e.charCode;
     var ctrl = e.ctrlKey || e.metaKey;

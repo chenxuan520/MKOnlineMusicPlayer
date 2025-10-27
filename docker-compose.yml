@@ -4,6 +4,7 @@ services:
   webapp:
     container_name: MKOnlineMusicPlayer
     image: php:7.4-apache
+    restart: always
     ports:
       - "4000:80"
     volumes:
