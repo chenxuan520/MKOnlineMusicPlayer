@@ -277,6 +277,107 @@ switch($types)   // 根据请求的 Api，执行相应操作
         echojson(json_encode($data));
         break;
 
+    case 'collections':
+        $action = getParam('action'); // add, remove, list, check
+        $id = getParam('id');        // song id
+        $source = getParam('source'); // song source
+        $name = getParam('name');    // song name
+        $artist = getParam('artist'); // song artist
+        $album = getParam('album');  // song album
+        $pic = getParam('pic');      // song pic
+        $url_id = getParam('url_id'); // song url_id
+        $pic_id = getParam('pic_id'); // song pic_id
+        $lyric_id = getParam('lyric_id'); // song lyric_id
+        
+        $collectionFile = 'collections/collections.json';
+        
+        // Ensure collections directory exists
+        if (!is_dir('collections')) {
+            createFolders('collections');
+        }
+        
+        // Load existing collections
+        $collections = array();
+        if (file_exists($collectionFile)) {
+            $collections = json_decode(file_get_contents($collectionFile), true);
+            if (!$collections) {
+                $collections = array();
+            }
+        }
+        
+        $response = array();
+        
+        switch($action) {
+            case 'add':
+                // Check if song already exists in collections
+                $exists = false;
+                foreach($collections as $key => $song) {
+                    if ($song['id'] == $id && $song['source'] == $source) {
+                        $exists = true;
+                        break;
+                    }
+                }
+                
+                if (!$exists) {
+                    $newSong = array(
+                        'id' => $id,
+                        'name' => $name,
+                        'artist' => $artist,
+                        'album' => $album,
+                        'source' => $source,
+                        'url_id' => $url_id,
+                        'pic_id' => $pic_id,
+                        'lyric_id' => $lyric_id,
+                        'pic' => $pic
+                    );
+                    array_push($collections, $newSong);
+                    file_put_contents($collectionFile, json_encode($collections));
+                    $response = array('success' => true, 'message' => '歌曲已收藏');
+                } else {
+                    $response = array('success' => false, 'message' => '歌曲已收藏');
+                }
+                break;
+                
+            case 'remove':
+                $songRemoved = false;
+                foreach($collections as $key => $song) {
+                    if ($song['id'] == $id && $song['source'] == $source) {
+                        array_splice($collections, $key, 1);
+                        $songRemoved = true;
+                        break;
+                    }
+                }
+                
+                if ($songRemoved) {
+                    file_put_contents($collectionFile, json_encode($collections));
+                    $response = array('success' => true, 'message' => '歌曲已取消收藏');
+                } else {
+                    $response = array('success' => false, 'message' => '歌曲不在收藏列表中');
+                }
+                break;
+                
+            case 'list':
+                $response = array('success' => true, 'collections' => $collections);
+                break;
+                
+            case 'check':
+                $isCollected = false;
+                foreach($collections as $song) {
+                    if ($song['id'] == $id && $song['source'] == $source) {
+                        $isCollected = true;
+                        break;
+                    }
+                }
+                $response = array('success' => true, 'collected' => $isCollected);
+                break;
+                
+            default:
+                $response = array('success' => false, 'message' => 'Invalid action');
+        }
+        
+        echojson(json_encode($response));
+        break;
+
     default:
         echo '<!doctype html><html><head><meta charset="utf-8"><title>信息</title><style>* {font-family: microsoft yahei}</style></head><body> <h2>MKOnlinePlayer</h2><h3>Github: https://github.com/mengkunsoft/MKOnlineMusicPlayer</h3><br>';
         if(!defined('DEBUG') || DEBUG !== true) {   // 非调试模式

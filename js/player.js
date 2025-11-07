@@ -117,10 +117,13 @@ function pause() {
         if(rem.playlist === undefined) {
             rem.playlist = rem.dislist;
             
-            musicList[1].item = musicList[rem.playlist].item; // 更新正在播放列表中音乐
-            
-            // 正在播放 列表项已发生变更，进行保存
-            playerSavedata('playing', musicList[1].item);   // 保存正在播放列表
+            // For collections list (dislist == -1), we should not copy from musicList[-1]
+            if(rem.dislist != -1 && musicList[rem.dislist] && musicList[rem.dislist].item) {
+                musicList[1].item = musicList[rem.dislist].item; // 更新正在播放列表中音乐
+                // 正在播放 列表项已发生变更，进行保存
+                playerSavedata('playing', musicList[1].item);   // 保存正在播放列表
+            }
+            // For collections, the music is already added to musicList[1] by double-click handler
             
             listClick(0);
         }
@@ -166,6 +169,13 @@ function audioPlay() {
         $("#music-progress .mkpgb-dot").addClass("dot-move");   // 小点闪烁效果
     }
     
+    // 获取当前播放的歌曲信息， with safety checks
+    if(!rem.playlist || rem.playid === undefined || 
+       !musicList[rem.playlist] || !musicList[rem.playlist].item || 
+       !musicList[rem.playlist].item[rem.playid]) {
+        console.error('播放信息错误，无法获取当前歌曲信息');
+        return;
+    }
     var music = musicList[rem.playlist].item[rem.playid];   // 获取当前播放的歌曲信息
     var msg = " 正在播放: " + music.name + " - " + music.artist;  // 改变浏览器标题
     
@@ -255,7 +265,12 @@ function listClick(no) {
     
     // 调试信息输出
     if(mkPlayer.debug) {
-        console.log("点播了列表中的第 " + (no + 1) + " 首歌 " + musicList[rem.dislist].item[no].name);
+        if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].item && musicList[rem.dislist].item[no]) {
+            console.log("点播了列表中的第 " + (no + 1) + " 首歌 " + musicList[rem.dislist].item[no].name);
+        } else if(rem.dislist == -1) {
+            // For collections list, we can get the name from the DOM or skip the message
+            console.log("点播了收藏列表中的第 " + (no + 1) + " 首歌");
+        }
     }
     
     // 搜索列表的歌曲要额外处理
@@ -287,7 +302,7 @@ function listClick(no) {
         
         // 正在播放 列表项已发生变更，进行保存
         playerSavedata('playing', musicList[1].item);   // 保存正在播放列表
-    } else {    // 普通列表
+    } else if(rem.dislist != -1) {    // 普通列表 (excluding collections)
         // 与之前不是同一个列表了（在播放别的列表的歌曲）或者是首次播放
         if((rem.dislist !== rem.playlist && rem.dislist !== 1) || rem.playlist === undefined) {
             rem.playlist = rem.dislist;     // 记录正在播放的列表
@@ -298,6 +313,12 @@ function listClick(no) {
             
             // 刷新正在播放的列表的动画
             refreshSheet();     // 更改正在播放的列表的显示
+        }
+    } else { // Collections list
+        // For collections, the music is already added to list 1 by the double-click handler
+        // So we just need to make sure playlist is set correctly and use the current list
+        if(rem.playlist === undefined) {
+            rem.playlist = 1; // Set to playing list
         }
     }
     
@@ -389,6 +410,9 @@ function play(music) {
         if (!rem.isMobile && mkPlayer.comments) {
             comments(music);
         }
+        
+
+        
         rem.audio[0].pause();
         rem.audio.attr('src', music.url);
 
