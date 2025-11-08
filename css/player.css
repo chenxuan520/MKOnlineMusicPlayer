@@ -340,7 +340,8 @@ body {
 
 /* 正在播放的那项 */
 .list-playing {
-    color: #fff;
+    color: #000;
+    font-weight: bold;
 }
 
 /* 列表数字 */
@@ -1175,3 +1176,5 @@ body {
     font-size: 12px;
     opacity: 0.8;
 }
+
+

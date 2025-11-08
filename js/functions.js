@@ -5,24 +5,24 @@
  * 时间：2018-3-11
  *************************************************/
 // 判断是否是移动设备
-var isMobile = {  
-    Android: function() {  
-        return navigator.userAgent.match(/Android/i) ? true : false;  
-    },  
-    BlackBerry: function() {  
-        return navigator.userAgent.match(/BlackBerry/i) ? true : false;  
-    },  
-    iOS: function() {  
-        return navigator.userAgent.match(/iPhone|iPad|iPod/i) ? true : false;  
-    },  
-    Windows: function() {  
-        return navigator.userAgent.match(/IEMobile/i) ? true : false;  
-    }, 
+var isMobile = {
+    Android: function() {
+        return navigator.userAgent.match(/Android/i) ? true : false;
+    },
+    BlackBerry: function() {
+        return navigator.userAgent.match(/BlackBerry/i) ? true : false;
+    },
+    iOS: function() {
+        return navigator.userAgent.match(/iPhone|iPad|iPod/i) ? true : false;
+    },
+    Windows: function() {
+        return navigator.userAgent.match(/IEMobile/i) ? true : false;
+    },
     Screen: function() {
         return document.documentElement.clientWidth < 900 ? true : false;
-    }, 
+    },
     any: function() {
-        return (isMobile.Android() || isMobile.BlackBerry() || isMobile.iOS() || isMobile.Windows() || isMobile.Screen());  
+        return (isMobile.Android() || isMobile.BlackBerry() || isMobile.iOS() || isMobile.Windows() || isMobile.Screen());
     }
 };
 
@@ -38,12 +38,12 @@ $(function(){
     if(mkPlayer.debug) {
         console.warn('播放器调试模式已开启，正常使用时请在 js/player.js 中按说明关闭调试模式');
     }
-    
+
     rem.isMobile  = isMobile.any();      // 判断是否是移动设备
     rem.webTitle  = document.title;      // 记录页面原本的标题
     rem.errCount  = 0;                   // 连续播放失败的歌曲数归零
     rem.userAgent = navigator.userAgent; // 获取用户userAgent
-    
+
     window.onresize = function () {
         rem.isMobile = isMobile.any();
         if (navigator.userAgent !== rem.userAgent) {
@@ -53,8 +53,8 @@ $(function(){
 
     initProgress();     // 初始化音量条、进度条（进度条初始化要在 Audio 前，别问我为什么……）
     initAudio();    // 初始化 audio 标签，事件绑定
-    
-    
+
+
     if(rem.isMobile) {  // 加了滚动条插件和没加滚动条插件所操作的对象是不一样的
         rem.sheetList = $("#sheet");
         rem.mainList = $("#main-list");
@@ -66,14 +66,14 @@ $(function(){
                 updateOnContentResize: true // 数据更新后自动刷新滚动条
             }
         });
-        
+
         rem.sheetList = $("#sheet .mCSB_container");
-        rem.mainList = $("#main-list .mCSB_container");  
+        rem.mainList = $("#main-list .mCSB_container");
     }
-    
+
     addListhead();  // 列表头
     addListbar("loading");  // 列表加载中
-    
+
     // 顶部按钮点击处理
     $(".btn").click(function(){
         switch($(this).data("action")) {
@@ -83,26 +83,26 @@ $(function(){
             case "search":  // 搜索
                 searchBox();
             break;
-            
+
             case "playing": // 正在播放
                 loadList(1); // 显示正在播放列表
             break;
-            
+
             case "sheet":   // 播放列表
                 dataBox("sheet");    // 在主界面显示出音乐专辑
             break;
-            
+
             case "collections":   // 我的收藏
                 loadCollections(); // 显示收藏列表
             break;
         }
     });
-    
+
     // 列表项双击播放
     $(".music-list").on("dblclick",".list-item", function() {
         var num = parseInt($(this).data("no"));
         if(isNaN(num)) return false;
-        
+
         // Check if we're in collections list (now has a real playlist index)
         if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
             // User is in a collection playlist, use standard listClick
@@ -114,7 +114,7 @@ $(function(){
             if(music) {
                 // Set playlist to "正在播放" when playing collection items
                 rem.playlist = 1;   // Always set to playing list for collection items
-                
+
                 // Find if the song already exists in playing list
                 var tmpid = -1;
                 for(var i=0; i<musicList[1].item.length; i++) {
@@ -123,26 +123,26 @@ $(function(){
                         break;
                     }
                 }
-                
+
                 // If not found, add to playing list
                 if(tmpid == -1) {
                     musicList[1].item.push(music);
                     tmpid = musicList[1].item.length - 1;
                 }
-                
+
                 playList(tmpid);
             }
         } else {
             listClick(num);
         }
     });
-    
+
     // 移动端列表项单击播放
     $(".music-list").on("click",".list-item", function() {
         if(rem.isMobile) {
             var num = parseInt($(this).data("no"));
             if(isNaN(num)) return false;
-            
+
             // Check if we're in collections list (now has a real playlist index)
             if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
                 // User is in a collection playlist, use standard listClick
@@ -154,7 +154,7 @@ $(function(){
                 if(music) {
                     // Set playlist to "正在播放" when playing collection items
                     rem.playlist = 1;   // Always set to playing list for collection items
-                    
+
                     // Find if the song already exists in playing list
                     var tmpid = -1;
                     for(var i=0; i<musicList[1].item.length; i++) {
@@ -163,13 +163,13 @@ $(function(){
                             break;
                         }
                     }
-                    
+
                     // If not found, add to playing list
                     if(tmpid == -1) {
                         musicList[1].item.push(music);
                         tmpid = musicList[1].item.length - 1;
                     }
-                    
+
                     playList(tmpid);
                 }
             } else {
@@ -177,14 +177,14 @@ $(function(){
             }
         }
     });
-    
+
     // 小屏幕点击右侧小点查看歌曲详细信息
     $(".music-list").on("click",".list-mobile-menu", function() {
         var num = parseInt($(this).parent().data("no"));
         musicInfo(rem.dislist, num);
         return false;
     });
-    
+
     // 列表鼠标移过显示对应的操作按钮
     $(".music-list").on("mousemove",".list-item", function() {
         var num = parseInt($(this).data("no"));
@@ -192,8 +192,8 @@ $(function(){
         // 还没有追加菜单则加上菜单
         if(!$(this).data("loadmenu")) {
             var target = $(this).find(".music-name");
-            var html = '<span class="music-name-cult">' + 
-            target.html() + 
+            var html = '<span class="music-name-cult">' +
+            target.html() +
             '</span>' +
             '<div class="list-menu" data-no="' + num + '">' +
                 '<span class="list-icon icon-play" data-function="play" title="点击播放这首歌"></span>' +
@@ -203,7 +203,7 @@ $(function(){
             '</div>';
             target.html(html);
             $(this).data("loadmenu", true);
-            
+
             // 检查这首歌的收藏状态
             var music = null;
             if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].item && musicList[rem.dislist].item[num]) {
@@ -211,7 +211,7 @@ $(function(){
             } else if(rem.dislist == -1) { // Collections list
                 music = $(this).data('music');
             }
-            
+
             if(music) {
                 // 检查收藏状态
                 $.ajax({
@@ -235,7 +235,7 @@ $(function(){
             }
         }
     });
-    
+
     // 列表中的菜单点击
     $(".music-list").on("click",".icon-play,.icon-download,.icon-share,.icon-collect", function() {
         var num = parseInt($(this).parent().data("no"));
@@ -268,13 +268,13 @@ $(function(){
                     // For collections list, we need to get the music data differently
                     music = $('.list-item[data-no="' + num + '"]').data('music');
                 }
-                
+
                 if(music) {
                     var icon = $(this);
                     var isCollected = icon.hasClass('collected');
-                    
+
                     toggleCollection(music);
-                    
+
                     // Update the icon and title immediately
                     if (isCollected) {
                         icon.removeClass('collected');
@@ -288,14 +288,14 @@ $(function(){
         }
         return true;
     });
-    
+
     // 点击加载更多
     $(".music-list").on("click",".list-loadmore", function() {
         $(".list-loadmore").removeClass('list-loadmore');
         $(".list-loadmore").html('加载中...');
         ajaxSearch();
     });
-    
+
     // 点击专辑显示专辑歌曲
     $("#sheet").on("click",".sheet-cover,.sheet-name", function() {
         var num = parseInt($(this).parent().data("no"));
@@ -308,7 +308,7 @@ $(function(){
         }
         loadList(num);
     });
-    
+
     // 点击同步云音乐
     $("#sheet").on("click",".login-in", function() {
         layer.prompt(
@@ -324,12 +324,12 @@ $(function(){
                     ,shade: [0.25,,'#000'] //遮罩透明度
                     ,shadeClose: true
                     ,anim: 0 //0-6的动画形式，-1不开启
-                    ,content: 
+                    ,content:
                     '1、首先<a href="http://music.163.com/" target="_blank">点我(http://music.163.com/)</a>打开网易云音乐官网<br>' +
-                    '2、然后点击页面右上角的“登录”，登录您的账号<br>' + 
-                    '3、点击您的头像，进入个人中心<br>' + 
+                    '2、然后点击页面右上角的“登录”，登录您的账号<br>' +
+                    '3、点击您的头像，进入个人中心<br>' +
                     '4、此时<span style="color:red">浏览器地址栏</span> <span style="color: green">/user/home?id=</span> 后面的<span style="color:red">数字</span>就是您的网易云 UID'
-                });  
+                });
             }
         },
         function(val, index){   // 输入后的回调函数
@@ -341,14 +341,14 @@ $(function(){
             ajaxUserList(val);
         });
     });
-    
+
     // 刷新用户列表
     $("#sheet").on("click",".login-refresh", function() {
         playerSavedata('ulist', '');
         layer.msg('刷新歌单');
         clearUserlist();
     });
-    
+
     // 退出登录
     $("#sheet").on("click",".login-out", function() {
         playerSavedata('uid', '');
@@ -356,22 +356,22 @@ $(function(){
         layer.msg('已退出');
         clearUserlist();
     });
-    
+
     // 播放、暂停按钮的处理
     $("#music-info").click(function(){
         if(rem.playid === undefined) {
             layer.msg('请先播放歌曲');
             return false;
         }
-        
+
         musicInfo(rem.playlist, rem.playid);
     });
-    
+
     // 播放、暂停按钮的处理
     $(".btn-play").click(function(){
         pause();
     });
-    
+
     // 循环顺序的处理
     $(".btn-order").click(function(){
         orderChange();
@@ -380,12 +380,12 @@ $(function(){
     $(".btn-prev").click(function(){
         prevMusic();
     });
-    
+
     // 下一首
     $(".btn-next").click(function(){
         nextMusic();
     });
-    
+
     // 静音按钮点击事件
     $(".btn-quiet").click(function(){
         var oldVol;     // 之前的音量值
@@ -405,9 +405,9 @@ $(function(){
     });
 
 
-    
+
     if((mkPlayer.coverbg === true && !rem.isMobile) || (mkPlayer.mcoverbg === true && rem.isMobile)) { // 开启了封面背景
-    
+
         if(rem.isMobile) {  // 移动端采用另一种模糊方案
             $('#blur-img').html('<div class="blured-img" id="mobile-blur"></div><div class="blur-mask mobile-mask"></div>');
         } else {
@@ -421,15 +421,15 @@ $(function(){
                 endOpacity : 1 // 图像最终的不透明度
             });
         }
-        
+
         $('.blur-mask').fadeIn(1000);   // 遮罩层淡出
     }
-    
+
     // 图片加载失败处理
     $('img').error(function(){
         $(this).attr('src', 'images/player_cover.png');
     });
-    
+
     setInterval(function () {
         $('.audio-time').text(getAudioTime());
     }, 1000)
@@ -504,20 +504,20 @@ function musicInfo(list, index) {
         }
         music = musicList[list].item[index];
     }
-    var tempStr = '<span class="info-title">歌名：</span>' + music.name + 
-    '<br><span class="info-title">歌手：</span>' + music.artist + 
+    var tempStr = '<span class="info-title">歌名：</span>' + music.name +
+    '<br><span class="info-title">歌手：</span>' + music.artist +
     '<br><span class="info-title">专辑：</span>' + music.album;
-    
+
     if(list == rem.playlist && index == rem.playid) {   // 当前正在播放这首歌，那么还可以顺便获取一下时长。。
         tempStr += '<br><span class="info-title">时长：</span>' + formatTime(rem.audio[0].duration);
     }
-    
-    tempStr += '<br><span class="info-title">操作：</span>' + 
-    '<span class="info-btn" onclick="thisDownload(this)" data-list="' + list + '" data-index="' + index + '">下载</span>' + 
-    '<span style="margin-left: 10px" class="info-btn" onclick="thisDownloadLrc(this)" data-list="' + list + '" data-index="' + index + '">下载歌词</span>' + 
-    '<span style="margin-left: 10px" class="info-btn" onclick="thisDownloadPic(this)" data-list="' + list + '" data-index="' + index + '">下载封面</span>' + 
+
+    tempStr += '<br><span class="info-title">操作：</span>' +
+    '<span class="info-btn" onclick="thisDownload(this)" data-list="' + list + '" data-index="' + index + '">下载</span>' +
+    '<span style="margin-left: 10px" class="info-btn" onclick="thisDownloadLrc(this)" data-list="' + list + '" data-index="' + index + '">下载歌词</span>' +
+    '<span style="margin-left: 10px" class="info-btn" onclick="thisDownloadPic(this)" data-list="' + list + '" data-index="' + index + '">下载封面</span>' +
     '<span style="margin-left: 10px" class="info-btn" onclick="thisShare(this)" data-list="' + list + '" data-index="' + index + '">外链</span>';
-    
+
     layer.open({
         type: 0,
         shade: [0.25,,'#000'],
@@ -526,16 +526,16 @@ function musicInfo(list, index) {
         btn: false,
         content: tempStr
     });
-    
+
     if(mkPlayer.debug) {
-        console.info('id: "' + music.id + '",\n' + 
+        console.info('id: "' + music.id + '",\n' +
         'name: "' + music.name + '",\n' +
         'artist: "' + music.artist + '",\n' +
         'album: "' + music.album + '",\n' +
         'source: "' + music.source + '",\n' +
-        'url_id: "' + music.url_id + '",\n' + 
-        'pic_id: "' + music.pic_id + '",\n' + 
-        'lyric_id: "' + music.lyric_id + '",\n' + 
+        'url_id: "' + music.url_id + '",\n' +
+        'pic_id: "' + music.pic_id + '",\n' +
+        'lyric_id: "' + music.lyric_id + '",\n' +
         'pic: "' + music.pic + '",\n' +
         'url: ""');
         // 'url: "' + music.url + '"');
@@ -571,9 +571,9 @@ function searchSubmit() {
         return false;
     }
     rem.source = $("#music-source input[name='source']:checked").val();
-    
+
     layer.closeAll('page');     // 关闭搜索框
-    
+
     rem.loadPage = 1;   // 已加载页数复位
     rem.wd = wd;    // 搜索词
     ajaxSearch();   // 加载搜索结果
@@ -652,8 +652,8 @@ function thisDownloadPic (obj) {
     if (music.pic) {
         open(music.pic.split('?')[0].split('@')[0]);
     } else {
-        $.ajax({ 
-            type: mkPlayer.method, 
+        $.ajax({
+            type: mkPlayer.method,
             url: mkPlayer.api,
             data: "types=pic&id=" + music.pic_id + "&source=" + music.source,
             dataType: mkPlayer.dataType,
@@ -718,7 +718,7 @@ function thisDownloadLrc (obj) {
             if (mkPlayer.debug) {
                 console.debug("歌词获取成功");
             }
-            
+
             var lyric = jsonData.lyric;
             if (mkPlayer.debug) {
                 console.debug("歌词获取成功");
@@ -741,7 +741,7 @@ function thisDownloadLrc (obj) {
             layer.msg('歌词读取失败 - ' + XMLHttpRequest.status);
             console.error(XMLHttpRequest + textStatus + errorThrown);
             callback('', music.lyric_id);    // 回调函数
-        }   // error   
+        }   // error
     });//ajax
 }
 
@@ -799,11 +799,11 @@ function ajaxShare(music) {
         layer.msg('这首歌不支持外链获取');
         return;
     }
-    
-    var tmpHtml = '<p>' + music.artist + ' - ' + music.name + ' 的外链地址为：</p>' + 
-    '<input class="share-url" onmouseover="this.focus();this.select()" value="' + music.url + '">' + 
+
+    var tmpHtml = '<p>' + music.artist + ' - ' + music.name + ' 的外链地址为：</p>' +
+    '<input class="share-url" onmouseover="this.focus();this.select()" value="' + music.url + '">' +
     '<p class="share-tips">* 获取到的音乐外链有效期较短，请按需使用。</p>';
-    
+
     layer.open({
         title: '歌曲外链分享'
         ,shade: [0.25,,'#000']
@@ -817,23 +817,23 @@ function ajaxShare(music) {
 function changeCover(music) {
     var img = music.pic;    // 获取歌曲封面
     var animate = false,imgload = false;
-    
+
     if(!img) {  // 封面为空
         ajaxPic(music, changeCover);    // 获取歌曲封面图
         img == "err";    // 暂时用无图像占个位...
     }
-    
+
     if(img == "err") {
         img = "images/player_cover.png";
     } else {
         if(mkPlayer.mcoverbg === true && rem.isMobile)      // 移动端封面
-        {    
+        {
             $("#music-cover").load(function(){
                 $("#mobile-blur").css('background-image', 'url("' + img + '")');
             });
-        } 
+        }
         else if(mkPlayer.coverbg === true && !rem.isMobile)     // PC端封面
-        { 
+        {
             $("#music-cover").load(function(){
                 if(animate) {   // 渐变动画也已完成
                     $("#blur-img").backgroundBlur(img);    // 替换图像并淡出
@@ -841,9 +841,9 @@ function changeCover(music) {
                 } else {
                     imgload = true;     // 告诉下面的函数，图片已准备好
                 }
-                
+
             });
-            
+
             // 渐变动画
             $("#blur-img").animate({opacity: "0.2"}, 1000, function(){
                 if(imgload) {   // 如果图片已经加载好了
@@ -855,7 +855,7 @@ function changeCover(music) {
             });
         }
     }
-    
+
     $("#music-cover").attr("src", img);     // 改变右侧封面
     $(".sheet-item[data-no='1'] .sheet-cover").attr('src', img);    // 改变正在播放列表的图像
 }
@@ -867,11 +867,11 @@ function loadList(list) {
         layer.msg('列表读取中...', {icon: 16,shade: [0.25,,'#000'],time: 500});
         return true;
     }
-    
+
     rem.dislist = list;     // 记录当前显示的列表
-    
+
     dataBox("list");    // 在主界面显示出播放列表
-    
+
     // 调试信息输出
     if(mkPlayer.debug) {
         if(musicList[list].id) {
@@ -884,35 +884,35 @@ function loadList(list) {
             console.log('加载播放列表 ' + list + ' - ' + musicList[list].name);
         }
     }
-    
+
     rem.mainList.html('');   // 清空列表中原有的元素
     addListhead();      // 向列表中加入列表头
-    
+
     if(!musicList[list] || !musicList[list].item || musicList[list].item.length == 0) {
         addListbar("nodata");   // 列表中没有数据
     } else {
-        
+
         // 逐项添加数据
         for(var i=0; i<musicList[list].item.length; i++) {
             var tmpMusic = musicList[list].item[i];
-            
+
             addItem(i + 1, tmpMusic.name, tmpMusic.artist, tmpMusic.album);
-            
+
             // 音乐链接均有有效期限制,重新显示列表时清空处理
             if(list == 1 || list == 2) tmpMusic.url = "";
         }
-        
+
         // 列表加载完成后的处理
         if(list == 1 || list == 2) {    // 历史记录和正在播放列表允许清空
             addListbar("clear");    // 清空列表
         }
-        
+
         if(rem.playlist === undefined) {    // 未曾播放过
             if(mkPlayer.autoplay == true) pause();  // 设置了自动播放，则自动播放
         } else {
             refreshList();  // 刷新列表，添加正在播放样式
         }
-        
+
         listToTop();    // 播放列表滚动到顶部
     }
 }
@@ -920,7 +920,7 @@ function loadList(list) {
 // 加载收藏列表
 function loadCollections() {
     var tempCollectionIndex = 999; // Use high index to avoid conflicts with other lists
-    
+
     dataBox("list");    // 在主界面显示出播放列表
 
     rem.mainList.html('');   // 清空列表中原有的元素
@@ -962,7 +962,7 @@ function loadCollections() {
                         // 为每个列表项添加数据，以便后续获取完整信息
                         $('.list-item[data-no="' + i + '"]').data('music', tmpMusic);
                     }
-                    
+
                     // Now set this temporary list as the display list
                     rem.dislist = tempCollectionIndex;
                 }
@@ -1002,14 +1002,14 @@ function exportCollections() {
                 // Create a JSON file with the collections data
                 var dataStr = JSON.stringify(jsonData.collections, null, 2);
                 var dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-                
+
                 var exportFileDefaultName = 'collections.json';
-                
+
                 var linkElement = document.createElement('a');
                 linkElement.setAttribute('href', dataUri);
                 linkElement.setAttribute('download', exportFileDefaultName);
                 linkElement.click();
-                
+
                 layer.msg('收藏列表导出成功');
             } else {
                 layer.msg('收藏列表为空或导出失败');
@@ -1028,39 +1028,39 @@ function importCollections() {
     var input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
-    
+
     input.onchange = function(event) {
         var file = event.target.files[0];
         if (!file) {
             return;
         }
-        
+
         var reader = new FileReader();
         reader.onload = function(e) {
             try {
                 var importedData = JSON.parse(e.target.result);
-                
+
                 if (!Array.isArray(importedData)) {
                     layer.msg('导入的文件格式不正确');
                     return;
                 }
-                
+
                 // Add the imported songs to collections one by one
                 var importedCount = 0;
                 var totalCount = importedData.length;
-                
+
                 function importNext(index) {
                     if (index >= importedData.length) {
                         layer.msg(`导入完成，成功导入 ${importedCount}/${totalCount} 首歌曲`);
-                        
+
                         // Refresh collections UI after import completes
                         refreshCollectionsUI();
-                        
+
                         return;
                     }
-                    
+
                     var song = importedData[index];
-                    
+
                     // Check if song already exists in collections
                     $.ajax({
                         type: mkPlayer.method,
@@ -1073,8 +1073,8 @@ function importCollections() {
                                 $.ajax({
                                     type: mkPlayer.method,
                                     url: mkPlayer.api,
-                                    data: "types=collections&action=add&id=" + song.id + 
-                                          "&source=" + song.source + 
+                                    data: "types=collections&action=add&id=" + song.id +
+                                          "&source=" + song.source +
                                           "&name=" + encodeURIComponent(song.name) +
                                           "&artist=" + encodeURIComponent(song.artist) +
                                           "&album=" + encodeURIComponent(song.album) +
@@ -1105,9 +1105,9 @@ function importCollections() {
                         }
                     });
                 }
-                
+
                 importNext(0);
-                
+
             } catch (e) {
                 layer.msg('JSON文件格式错误');
                 console.error('JSON解析错误: ', e);
@@ -1115,7 +1115,7 @@ function importCollections() {
         };
         reader.readAsText(file);
     };
-    
+
     input.click();
 }
 
@@ -1123,7 +1123,7 @@ function importCollections() {
 function refreshCollectionsUI() {
     // 更新内部的收藏列表数据
     var tempCollectionIndex = 999;
-    
+
     $.ajax({
         type: mkPlayer.method,
         url: mkPlayer.api,
@@ -1137,7 +1137,7 @@ function refreshCollectionsUI() {
                 musicList[tempCollectionIndex].item = jsonData.collections;
                 musicList[tempCollectionIndex].name = '我的收藏';
                 musicList[tempCollectionIndex].id = 'collections';
-                
+
                 // 如果当前正在查看收藏列表，也需要重新加载界面
                 if (rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
                     loadCollections();
@@ -1192,7 +1192,7 @@ function addItem(no, name, auth, album) {
     '    <span class="music-album">' + album + '</span>' +
     '    <span class="auth-name">' + auth + '</span>' +
     '    <span class="music-name">' + name + '</span>' +
-    '</div>'; 
+    '</div>';
     rem.mainList.append(html);
 }
 
@@ -1204,27 +1204,27 @@ function addListbar(types) {
         case "more":    // 还可以加载更多
             html = '<div class="list-item text-center list-loadmore list-clickable" title="点击加载更多数据" id="list-foot">点击加载更多...</div>';
         break;
-        
+
         case "nomore":  // 数据加载完了
             html = '<div class="list-item text-center" id="list-foot">全都加载完了</div>';
         break;
-        
+
         case "loading": // 加载中
             html = '<div class="list-item text-center" id="list-foot">播放列表加载中...</div>';
         break;
-        
+
         case "nodata":  // 列表中没有内容
             html = '<div class="list-item text-center" id="list-foot">可能是个假列表，什么也没有</div>';
         break;
-        
+
         case "clear":   // 清空列表
             html = '<div class="list-item text-center list-clickable" id="list-foot" onclick="clearDislist();">清空列表</div>';
         break;
-        
+
         case "collections_export":   // 收藏列表导出
             html = '<div class="list-item text-center list-clickable" id="list-foot" onclick="exportCollections();">导出收藏</div>';
         break;
-        
+
         case "collections_import":   // 收藏列表导入
             html = '<div class="list-item text-center list-clickable" id="list-foot" onclick="importCollections();">导入收藏</div>';
         break;
@@ -1234,17 +1234,17 @@ function addListbar(types) {
 
 // 将时间格式化为 00:00 的格式
 // 参数：原始时间
-function formatTime(time){    
+function formatTime(time){
     var hour,minute,second;
     hour = String(parseInt(time/3600,10));
     if(hour.length == 1) hour='0' + hour;
-    
+
     minute=String(parseInt((time%3600)/60,10));
     if(minute.length == 1) minute='0'+minute;
-    
+
     second=String(parseInt(time%60,10));
     if(second.length == 1) second='0'+second;
-    
+
     if(hour > 0) {
         return hour + ":" + minute + ":" + second;
     } else {
@@ -1255,7 +1255,7 @@ function formatTime(time){
 // url编码
 // 输入参数：待编码的字符串
 function urlEncode(String) {
-    return encodeURIComponent(String).replace(/'/g,"%27").replace(/"/g,"%22");  
+    return encodeURIComponent(String).replace(/'/g,"%27").replace(/"/g,"%22");
 }
 
 // 在 ajax 获取了音乐的信息后再进行更新
@@ -1263,7 +1263,7 @@ function urlEncode(String) {
 function updateMinfo(music) {
     // 不含有 id 的歌曲无法更新
     if(!music.id) return false;
-    
+
     // 循环查找播放列表并更新信息
     for(var i=0; i<musicList.length; i++) {
         if(musicList[i] && musicList[i].item) {  // Check if list and items exist
@@ -1282,35 +1282,35 @@ function updateMinfo(music) {
 function refreshList() {
     // 还没播放过，不用对比了
     if(rem.playlist === undefined) return true;
-    
+
     $(".list-playing").removeClass("list-playing");        // 移除其它的正在播放
-    
+
     if(rem.paused !== true) {   // 没有暂停
         if(rem.dislist != -1 && !(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections')) { // Skip for collections lists
             for(var i=0; i<musicList[rem.dislist].item.length; i++) {
                 // 与正在播放的歌曲 id 相同
-                if((musicList[rem.dislist].item[i].id !== undefined) && 
-                  (musicList[rem.dislist].item[i].id == musicList[1].item[rem.playid].id) && 
+                if((musicList[rem.dislist].item[i].id !== undefined) &&
+                  (musicList[rem.dislist].item[i].id == musicList[1].item[rem.playid].id) &&
                   (musicList[rem.dislist].item[i].source == musicList[1].item[rem.playid].source)) {
                     $(".list-item[data-no='" + i + "']").addClass("list-playing");  // 添加正在播放样式
-                    
+
                     return true;    // 一般列表中只有一首，找到了赶紧跳出
                 }
             }
         }
     }
-    
+
 }
 // 添加一个歌单
 // 参数：编号、歌单名字、歌单封面
 function addSheet(no, name, cover) {
     if(!cover) cover = "images/player_cover.png";
     if(!name) name = "读取中...";
-    
+
     var html = '<div class="sheet-item" data-no="' + no + '">' +
     '    <img class="sheet-cover" src="' +cover+ '">' +
     '    <p class="sheet-name">' +name+ '</p>' +
-    '</div>'; 
+    '</div>';
     rem.sheetList.append(html);
 }
 // 清空歌单显示
@@ -1327,8 +1327,8 @@ function sheetBar() {
         barHtml = '我的歌单 <span class="login-btn login-in">[点击同步]</span>';
     }
     barHtml = '<span id="sheet-bar"><div class="clear-fix"></div>' +
-    '<div id="user-login" class="sheet-title-bar">' + barHtml + 
-    '</div></span>'; 
+    '<div id="user-login" class="sheet-title-bar">' + barHtml +
+    '</div></span>';
     rem.sheetList.append(barHtml);
 }
 
@@ -1355,7 +1355,7 @@ function dataBox(choose) {
                 $(".btn[data-action='sheet']").addClass('active');
             }
         break;
-        
+
         case "sheet":   // 显示专辑
             if($(".btn[data-action='player']").css('display') !== 'none') {
                 $("#player").hide();
@@ -1366,7 +1366,7 @@ function dataBox(choose) {
             $("#main-list").fadeOut();
             $(".btn[data-action='sheet']").addClass('active');
         break;
-        
+
         case "player":  // 显示播放器
             $("#player").fadeIn();
             $("#sheet").fadeOut();
@@ -1380,9 +1380,9 @@ function dataBox(choose) {
 // 参数：要添加的音乐
 function addHis(music) {
     if(rem.playlist == 2) return true;  // 在播放“播放记录”列表则不作改变
-    
+
     if(musicList[2].item.length > 300) musicList[2].item.length = 299; // 限定播放历史最多是 300 首
-    
+
     if(music.id !== undefined && music.id !== '') {
         // 检查历史数据中是否有这首歌，如果有则提至前面
         for(var i=0; i<musicList[2].item.length; i++) {
@@ -1392,10 +1392,10 @@ function addHis(music) {
             }
         }
     }
-    
+
     // 再放到第一位
     musicList[2].item.unshift(music);
-    
+
     playerSavedata('his', musicList[2].item);  // 保存播放历史列表
 }
 
@@ -1407,13 +1407,13 @@ function initList() {
         rem.uname = playerReaddata('uname');
         // musicList.push(playerReaddata('ulist'));
         var tmp_ulist = playerReaddata('ulist');    // 读取本地记录的用户歌单
-        
+
         if(tmp_ulist) musicList.push.apply(musicList, tmp_ulist);   // 追加到系统歌单的后面
     }
-    
+
     // 显示所有的歌单
     for(var i=1; i<musicList.length; i++) {
-        
+
         if(i == 1) {    // 正在播放列表
             // 读取正在播放列表
             var tmp_item = playerReaddata('playing');
@@ -1421,16 +1421,16 @@ function initList() {
                 musicList[1].item = tmp_item;
                 mkPlayer.defaultlist = 1;   // 默认显示正在播放列表
             }
-            
+
         } else if(i == 2) { // 历史记录列表
             // 读取历史记录
             var tmp_item = playerReaddata('his');
             if(tmp_item) {
                 musicList[2].item = tmp_item;
             }
-            
+
          // 列表不是用户列表，并且信息为空，需要ajax读取列表
-        }else if(!musicList[i].creatorID && (musicList[i].item == undefined || (i>2 && musicList[i].item.length == 0))) {   
+        }else if(!musicList[i].creatorID && (musicList[i].item == undefined || (i>2 && musicList[i].item.length == 0))) {
             musicList[i].item = [];
             if(musicList[i].id) {   // 列表ID已定义
                 // ajax获取列表信息
@@ -1439,22 +1439,22 @@ function initList() {
                 if(!musicList[i].name) musicList[i].name = '未命名';
             }
         }
-        
+
         // 在前端显示出来
         addSheet(i, musicList[i].name, musicList[i].cover);
     }
-    
+
     // 登陆了，但歌单又没有，说明是在刷新歌单
     if(playerReaddata('uid') && !tmp_ulist) {
         ajaxUserList(rem.uid);
         return true;
     }
-    
+
     // 首页显示默认列表
     if(mkPlayer.defaultlist >= musicList.length) mkPlayer.defaultlist = 1;  // 超出范围，显示正在播放列表
-    
+
     if(musicList[mkPlayer.defaultlist].isloading !== true)  loadList(mkPlayer.defaultlist);
-    
+
     // 显示最后一项登陆条
     sheetBar();
 }
@@ -1462,16 +1462,16 @@ function initList() {
 // 清空用户的同步列表
 function clearUserlist() {
     if(!rem.uid) return false;
-    
+
     // 查找用户歌单起点
     for(var i=1; i<musicList.length; i++) {
         if(musicList[i].creatorID !== undefined && musicList[i].creatorID == rem.uid) break;    // 找到了就退出
     }
-    
+
     // 删除记忆数组
     musicList.splice(i, musicList.length - i); // 先删除相同的
     musicList.length = i;
-    
+
     // 刷新列表显示
     clearSheet();
     initList();
@@ -1510,9 +1510,9 @@ function refreshSheet() {
             console.log("开始播放收藏列表中的歌曲");
         }
     }
-    
+
     $(".sheet-playing").removeClass("sheet-playing");        // 移除其它的正在播放
-    
+
     // Only add sheet-playing class if playlist is valid
     if(rem.playlist != -1) {
         $(".sheet-item[data-no='" + rem.playlist + "']").addClass("sheet-playing"); // 添加样式
@@ -1526,7 +1526,7 @@ function playerSavedata(key, data) {
     data = JSON.stringify(data);
     // 存储，IE6~7 不支持HTML5本地存储
     if (window.localStorage) {
-        localStorage.setItem(key, data);    
+        localStorage.setItem(key, data);
     }
 }
 
@@ -1545,40 +1545,40 @@ function showCommentModal(index) {
         layer.msg('暂无评论数据');
         return;
     }
-    
+
     var comment = rem.comments[index];
     var avatar = comment.user.avatar || "images/avatar.png";
     var username = comment.user.name || "匿名用户";
     var content = comment.content || "暂无评论内容";
     var time = formatDate(comment.time * 1000);
-    
+
     // 判断当前评论是热门评论还是普通评论
     var isHotComment = false;
     if (typeof rem.hotCommentsCount !== 'undefined' && index < rem.hotCommentsCount) {
         isHotComment = true;
     }
     var commentType = isHotComment ? "【热门评论】" : "【普通评论】";
-    
+
     // 更新模态框内容
     $("#comment-avatar").attr("src", avatar);
     $("#comment-username").html('<span style="color: #ff6b35; font-weight: bold;">' + commentType + '</span> ' + username);
     $("#comment-content").text(content);
-    
+
     // 只有在时间有效时才显示时间
     if (time) {
         $("#comment-time").text(time).show();
     } else {
         $("#comment-time").hide();
     }
-    
+
     // 更新计数显示
     $("#current-comment").text(index + 1);
     $("#total-comments").text(rem.comments.length);
-    
+
     // 更新导航按钮状态
     $("#prev-comment").prop("disabled", index === 0);
     $("#next-comment").prop("disabled", index === rem.comments.length - 1);
-    
+
     // 显示模态框 - 使用新的CSS类避免跳动
     $("#comment-modal").addClass('show');
 }
@@ -1589,20 +1589,20 @@ function formatDate(timestamp) {
     if (!timestamp || isNaN(timestamp)) {
         return null; // 返回null表示不显示时间
     }
-    
+
     var date = new Date(timestamp);
-    
+
     // 检查日期对象是否有效
     if (isNaN(date.getTime())) {
         return null;
     }
-    
+
     var year = date.getFullYear();
     var month = ('0' + (date.getMonth() + 1)).slice(-2);
     var day = ('0' + date.getDate()).slice(-2);
     var hours = ('0' + date.getHours()).slice(-2);
     var minutes = ('0' + date.getMinutes()).slice(-2);
-    
+
     return year + '-' + month + '-' + day + ' ' + hours + ':' + minutes;
 }
 
@@ -1616,7 +1616,7 @@ $(document).ready(function() {
             showCommentModal(currentIndex - 1);
         }
     });
-    
+
     // 下一条评论
     $("#next-comment").click(function() {
         if (!rem.comments) return;
@@ -1625,12 +1625,12 @@ $(document).ready(function() {
             showCommentModal(currentIndex + 1);
         }
     });
-    
+
     // 关闭评论模态框
     $("#close-comment").click(function() {
         $("#comment-modal").removeClass('show');
     });
-    
+
     // 点击模态框外部关闭
     $("#comment-modal").click(function(e) {
         if (e.target === this) {
@@ -1649,19 +1649,19 @@ function toggleCollection(music) {
         dataType: mkPlayer.dataType,
         success: function(jsonData) {
             var action = jsonData.collected ? 'remove' : 'add';
-            
+
             $.ajax({
                 type: mkPlayer.method,
                 url: mkPlayer.api,
-                data: "types=collections&action=" + action + 
-                      "&id=" + music.id + 
-                      "&source=" + music.source + 
-                      "&name=" + encodeURIComponent(music.name) + 
-                      "&artist=" + encodeURIComponent(music.artist) + 
-                      "&album=" + encodeURIComponent(music.album) + 
-                      "&pic=" + encodeURIComponent(music.pic || '') + 
-                      "&url_id=" + encodeURIComponent(music.url_id) + 
-                      "&pic_id=" + encodeURIComponent(music.pic_id) + 
+                data: "types=collections&action=" + action +
+                      "&id=" + music.id +
+                      "&source=" + music.source +
+                      "&name=" + encodeURIComponent(music.name) +
+                      "&artist=" + encodeURIComponent(music.artist) +
+                      "&album=" + encodeURIComponent(music.album) +
+                      "&pic=" + encodeURIComponent(music.pic || '') +
+                      "&url_id=" + encodeURIComponent(music.url_id) +
+                      "&pic_id=" + encodeURIComponent(music.pic_id) +
                       "&lyric_id=" + encodeURIComponent(music.lyric_id),
                 dataType: mkPlayer.dataType,
                 success: function(jsonData) {
@@ -1695,17 +1695,17 @@ function comments(obj) {
     }
     rem.currentCommentReqId++;
     var thisReqId = rem.currentCommentReqId;
-    
+
     // 清理之前的评论定时器
     if (rem.commentsTime) {
         clearTimeout(rem.commentsTime);
     }
-    
+
     $(".banner_text span").text("歌曲热评/评论");
     $(".banner_text a").attr("href", "javascript:;");
     $(".banner_text a").removeAttr("target");
     $(".banner_text img").hide();
-    
+
     // 添加点击事件来打开评论模态框
     $(".banner_text a").off('click.commentModal').on('click.commentModal', function(e) {
         e.preventDefault();
@@ -1717,10 +1717,10 @@ function comments(obj) {
             layer.msg('暂无评论数据');
         }
     });
-    
+
     $.ajax({
-        type: mkPlayer.method, 
-        url: mkPlayer.api, 
+        type: mkPlayer.method,
+        url: mkPlayer.api,
         data: "types=comments&id=" + obj.id + "&source=" + obj.source + "&count=100",
         dataType: mkPlayer.dataType,
         success: function(jsonData){
@@ -1728,11 +1728,11 @@ function comments(obj) {
             if (thisReqId !== rem.currentCommentReqId) {
                 return; // 如果请求ID不匹配，说明用户已经切换到其他歌曲，停止处理
             }
-            
+
             // 保存原始评论数据
             var hotComments = jsonData.hot_comment && jsonData.hot_comment.length ? jsonData.hot_comment : [];
             var normalComments = jsonData.comment && jsonData.comment.length ? jsonData.comment : [];
-            
+
             // 优先使用热门评论，如果没有热门评论则使用普通评论
             // 如果有热门评论，就将热门评论和前50条普通评论合并
             if (hotComments.length > 0) {
@@ -1743,15 +1743,15 @@ function comments(obj) {
                 rem.comments = [];
                 return;
             }
-            
+
             // 保存热门评论数量，用于判断某条评论是否为热门评论
             rem.hotCommentsCount = hotComments.length;
-            
+
             // 限制评论总数，防止过多（可选，根据需要调整）
             if (rem.comments.length > 150) { // 增加限制到150条（热门+普通评论）
                 rem.comments = rem.comments.slice(0, 150);
             }
-            
+
             // 更新顶部链接，但不添加跳转功能（仅用于显示）
             if (obj.source === 'netease') {
                 $(".banner_text a").attr("href", "https://music.163.com/#/song?id="+obj.id+"#comment-box");
@@ -1762,29 +1762,29 @@ function comments(obj) {
             } else if (obj.source === 'xiami') {
                 $(".banner_text a").attr("href", "https://www.xiami.com/song/"+obj.id+"#comments");
             } else if (obj.source === 'baidu') {
-            
+
             }
-            
+
             // 设置为非外部链接
             $(".banner_text a").removeAttr("target");
-            
+
             (function nextComment (commentsIndex) {
                 // 在每次执行前检查当前请求ID是否仍有效
                 if (thisReqId !== rem.currentCommentReqId) {
                     return; // 如果请求ID不匹配，停止评论轮播
                 }
-                
+
                 if (commentsIndex === undefined || commentsIndex === rem.comments.length-1) {
                     commentsIndex = 0;
                 } else {
                     commentsIndex++;
                 }
-                
+
                 // 保存当前评论索引
                 rem.currentCommentIndex = commentsIndex;
 
                 var avatarSrc = (rem.comments[commentsIndex].user.avatar ? rem.comments[commentsIndex].user.avatar : "images/avatar.png");
-                
+
                 // 立即更新文字内容
                 $(".banner_text span").text(rem.comments[commentsIndex].content);
                 $(".banner_text img").show().attr("src", avatarSrc);
