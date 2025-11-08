@@ -91,6 +91,10 @@ $(function(){
             case "sheet":   // 播放列表
                 dataBox("sheet");    // 在主界面显示出音乐专辑
             break;
+            
+            case "collections":   // 我的收藏
+                loadCollections(); // 显示收藏列表
+            break;
         }
     });
     
@@ -98,7 +102,39 @@ $(function(){
     $(".music-list").on("dblclick",".list-item", function() {
         var num = parseInt($(this).data("no"));
         if(isNaN(num)) return false;
-        listClick(num);
+        
+        // Check if we're in collections list (now has a real playlist index)
+        if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
+            // User is in a collection playlist, use standard listClick
+            listClick(num);
+        } else if(rem.dislist == -1) {
+            // Fallback for any remaining -1 references (legacy)
+            // Get the music data from the stored data
+            var music = $(this).data('music');
+            if(music) {
+                // Set playlist to "正在播放" when playing collection items
+                rem.playlist = 1;   // Always set to playing list for collection items
+                
+                // Find if the song already exists in playing list
+                var tmpid = -1;
+                for(var i=0; i<musicList[1].item.length; i++) {
+                    if(musicList[1].item[i].id == music.id && musicList[1].item[i].source == music.source) {
+                        tmpid = i;
+                        break;
+                    }
+                }
+                
+                // If not found, add to playing list
+                if(tmpid == -1) {
+                    musicList[1].item.push(music);
+                    tmpid = musicList[1].item.length - 1;
+                }
+                
+                playList(tmpid);
+            }
+        } else {
+            listClick(num);
+        }
     });
     
     // 移动端列表项单击播放
@@ -106,7 +142,39 @@ $(function(){
         if(rem.isMobile) {
             var num = parseInt($(this).data("no"));
             if(isNaN(num)) return false;
-            listClick(num);
+            
+            // Check if we're in collections list (now has a real playlist index)
+            if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
+                // User is in a collection playlist, use standard listClick
+                listClick(num);
+            } else if(rem.dislist == -1) {
+                // Fallback for any remaining -1 references (legacy)
+                // Get the music data from the stored data
+                var music = $(this).data('music');
+                if(music) {
+                    // Set playlist to "正在播放" when playing collection items
+                    rem.playlist = 1;   // Always set to playing list for collection items
+                    
+                    // Find if the song already exists in playing list
+                    var tmpid = -1;
+                    for(var i=0; i<musicList[1].item.length; i++) {
+                        if(musicList[1].item[i].id == music.id && musicList[1].item[i].source == music.source) {
+                            tmpid = i;
+                            break;
+                        }
+                    }
+                    
+                    // If not found, add to playing list
+                    if(tmpid == -1) {
+                        musicList[1].item.push(music);
+                        tmpid = musicList[1].item.length - 1;
+                    }
+                    
+                    playList(tmpid);
+                }
+            } else {
+                listClick(num);
+            }
         }
     });
     
@@ -131,14 +199,45 @@ $(function(){
                 '<span class="list-icon icon-play" data-function="play" title="点击播放这首歌"></span>' +
                 '<span class="list-icon icon-download list-mobile-menu" title="点击下载这首歌"></span>' +
                 '<span class="list-icon icon-share" data-function="share" title="点击分享这首歌"></span>' +
+                '<span class="list-icon icon-collect" data-function="collect" title="收藏这首歌"></span>' +
             '</div>';
             target.html(html);
             $(this).data("loadmenu", true);
+            
+            // 检查这首歌的收藏状态
+            var music = null;
+            if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].item && musicList[rem.dislist].item[num]) {
+                music = musicList[rem.dislist].item[num];
+            } else if(rem.dislist == -1) { // Collections list
+                music = $(this).data('music');
+            }
+            
+            if(music) {
+                // 检查收藏状态
+                $.ajax({
+                    type: mkPlayer.method,
+                    url: mkPlayer.api,
+                    data: "types=collections&action=check&id=" + music.id + "&source=" + music.source,
+                    dataType: mkPlayer.dataType,
+                    success: function(jsonData) {
+                        if (jsonData.success) {
+                            var $collectIcon = $('.list-item[data-no="' + num + '"] .icon-collect');
+                            if (jsonData.collected) {
+                                $collectIcon.addClass('collected');
+                                $collectIcon.attr('title', '取消收藏');
+                            } else {
+                                $collectIcon.removeClass('collected');
+                                $collectIcon.attr('title', '收藏这首歌');
+                            }
+                        }
+                    }
+                });
+            }
         }
     });
     
     // 列表中的菜单点击
-    $(".music-list").on("click",".icon-play,.icon-download,.icon-share", function() {
+    $(".music-list").on("click",".icon-play,.icon-download,.icon-share,.icon-collect", function() {
         var num = parseInt($(this).parent().data("no"));
         if(isNaN(num)) return false;
         switch($(this).data("function")) {
@@ -146,8 +245,45 @@ $(function(){
                 listClick(num);     // 调用列表点击处理函数
             break;
             case "share":   // 分享
-                // ajax 请求数据
-                ajaxUrl(musicList[rem.dislist].item[num], ajaxShare);
+                var music = null;
+                if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].item && musicList[rem.dislist].item[num]) {
+                    music = musicList[rem.dislist].item[num];
+                } else if(rem.dislist == -1) { // Collections list
+                    // For collections list, we need to get the music data differently
+                    music = $('.list-item[data-no="' + num + '"]').data('music');
+                }
+
+                if(music) {
+                    // ajax 请求数据
+                    ajaxUrl(music, ajaxShare);
+                } else {
+                    layer.msg('歌曲信息获取失败');
+                }
+            break;
+            case "collect":   // 收藏/取消收藏
+                var music = null;
+                if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].item && musicList[rem.dislist].item[num]) {
+                    music = musicList[rem.dislist].item[num];
+                } else if(rem.dislist == -1) { // Collections list
+                    // For collections list, we need to get the music data differently
+                    music = $('.list-item[data-no="' + num + '"]').data('music');
+                }
+                
+                if(music) {
+                    var icon = $(this);
+                    var isCollected = icon.hasClass('collected');
+                    
+                    toggleCollection(music);
+                    
+                    // Update the icon and title immediately
+                    if (isCollected) {
+                        icon.removeClass('collected');
+                        icon.attr('title', '收藏这首歌');
+                    } else {
+                        icon.addClass('collected');
+                        icon.attr('title', '取消收藏');
+                    }
+                }
             break;
         }
         return true;
@@ -267,6 +403,8 @@ $(function(){
         volume_bar.goto(oldVol);    // 刷新音量显示
         if(rem.audio[0] !== undefined) rem.audio[0].volume = oldVol;  // 应用音量
     });
+
+
     
     if((mkPlayer.coverbg === true && !rem.isMobile) || (mkPlayer.mcoverbg === true && rem.isMobile)) { // 开启了封面背景
     
@@ -338,7 +476,34 @@ function getAudioTime () {
 
 // 展现系统列表中任意首歌的歌曲信息
 function musicInfo(list, index) {
-    var music = musicList[list].item[index];
+    var music;
+    if(list == -1) {  // Collections list (legacy)
+        var $item = $('.list-item[data-no="' + index + '"]');
+        music = $item.data('music');
+        if(!music) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+    } else if(list >= 0 && musicList[list] && musicList[list].id === 'collections') {  // New collections list approach
+        // Collections list with real playlist index
+        if(musicList[list] && musicList[list].item && musicList[list].item[index]) {
+            music = musicList[list].item[index];
+        } else {
+            // Fallback to DOM data
+            var $item = $('.list-item[data-no="' + index + '"]');
+            music = $item.data('music');
+        }
+        if(!music) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+    } else {
+        if(!musicList[list] || !musicList[list].item || !musicList[list].item[index]) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+        music = musicList[list].item[index];
+    }
     var tempStr = '<span class="info-title">歌名：</span>' + music.name + 
     '<br><span class="info-title">歌手：</span>' + music.artist + 
     '<br><span class="info-title">专辑：</span>' + music.album;
@@ -417,13 +582,72 @@ function searchSubmit() {
 
 // 下载正在播放的这首歌
 function thisDownload(obj) {
-    ajaxUrl(musicList[$(obj).data("list")].item[$(obj).data("index")], download);
+    var list = $(obj).data("list");
+    var index = $(obj).data("index");
+    var music;
+    if(list == -1) {  // Collections list
+        var $item = $('.list-item[data-no="' + index + '"]');
+        music = $item.data('music');
+        if(!music) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+    } else if(list >= 0 && musicList[list] && musicList[list].id === 'collections') {  // New collections list approach
+        // Collections list with real playlist index
+        if(musicList[list] && musicList[list].item && musicList[list].item[index]) {
+            music = musicList[list].item[index];
+        } else {
+            // Fallback to DOM data
+            var $item = $('.list-item[data-no="' + index + '"]');
+            music = $item.data('music');
+        }
+        if(!music) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+    } else {
+        if(!musicList[list] || !musicList[list].item || !musicList[list].item[index]) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+        music = musicList[list].item[index];
+    }
+    ajaxUrl(music, download);
 }
 
 // 获取并设置评论
 // 下载封面
 function thisDownloadPic (obj) {
-    var music = musicList[$(obj).data("list")].item[$(obj).data("index")];
+    var list = $(obj).data("list");
+    var index = $(obj).data("index");
+    var music;
+    if(list == -1) {  // Collections list (legacy)
+        var $item = $('.list-item[data-no="' + index + '"]');
+        music = $item.data('music');
+        if(!music) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+    } else if(list >= 0 && musicList[list] && musicList[list].id === 'collections') {  // New collections list approach
+        // Collections list with real playlist index
+        if(musicList[list] && musicList[list].item && musicList[list].item[index]) {
+            music = musicList[list].item[index];
+        } else {
+            // Fallback to DOM data
+            var $item = $('.list-item[data-no="' + index + '"]');
+            music = $item.data('music');
+        }
+        if(!music) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+    } else {
+        if(!musicList[list] || !musicList[list].item || !musicList[list].item[index]) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+        music = musicList[list].item[index];
+    }
     layer.closeAll();
     if (music.pic) {
         open(music.pic.split('?')[0].split('@')[0]);
@@ -453,7 +677,36 @@ function thisDownloadPic (obj) {
 
 // 下载歌词
 function thisDownloadLrc (obj) {
-    var music = musicList[$(obj).data("list")].item[$(obj).data("index")];
+    var list = $(obj).data("list");
+    var index = $(obj).data("index");
+    var music;
+    if(list == -1) {  // Collections list (legacy)
+        var $item = $('.list-item[data-no="' + index + '"]');
+        music = $item.data('music');
+        if(!music) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+    } else if(list >= 0 && musicList[list] && musicList[list].id === 'collections') {  // New collections list approach
+        // Collections list with real playlist index
+        if(musicList[list] && musicList[list].item && musicList[list].item[index]) {
+            music = musicList[list].item[index];
+        } else {
+            // Fallback to DOM data
+            var $item = $('.list-item[data-no="' + index + '"]');
+            music = $item.data('music');
+        }
+        if(!music) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+    } else {
+        if(!musicList[list] || !musicList[list].item || !musicList[list].item[index]) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+        music = musicList[list].item[index];
+    }
     layer.closeAll();
     $.ajax({
         type: mkPlayer.method,
@@ -494,7 +747,37 @@ function thisDownloadLrc (obj) {
 
 // 分享正在播放的这首歌
 function thisShare(obj) {
-    ajaxUrl(musicList[$(obj).data("list")].item[$(obj).data("index")], ajaxShare);
+    var list = $(obj).data("list");
+    var index = $(obj).data("index");
+    var music;
+    if(list == -1) {  // Collections list (legacy)
+        var $item = $('.list-item[data-no="' + index + '"]');
+        music = $item.data('music');
+        if(!music) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+    } else if(list >= 0 && musicList[list] && musicList[list].id === 'collections') {  // New collections list approach
+        // Collections list with real playlist index
+        if(musicList[list] && musicList[list].item && musicList[list].item[index]) {
+            music = musicList[list].item[index];
+        } else {
+            // Fallback to DOM data
+            var $item = $('.list-item[data-no="' + index + '"]');
+            music = $item.data('music');
+        }
+        if(!music) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+    } else {
+        if(!musicList[list] || !musicList[list].item || !musicList[list].item[index]) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+        music = musicList[list].item[index];
+    }
+    ajaxUrl(music, ajaxShare);
 }
 
 // 下载歌曲
@@ -605,7 +888,7 @@ function loadList(list) {
     rem.mainList.html('');   // 清空列表中原有的元素
     addListhead();      // 向列表中加入列表头
     
-    if(musicList[list].item.length == 0) {
+    if(!musicList[list] || !musicList[list].item || musicList[list].item.length == 0) {
         addListbar("nodata");   // 列表中没有数据
     } else {
         
@@ -632,6 +915,247 @@ function loadList(list) {
         
         listToTop();    // 播放列表滚动到顶部
     }
+}
+
+// 加载收藏列表
+function loadCollections() {
+    var tempCollectionIndex = 999; // Use high index to avoid conflicts with other lists
+    
+    dataBox("list");    // 在主界面显示出播放列表
+
+    rem.mainList.html('');   // 清空列表中原有的元素
+    addListhead();      // 向列表中加入列表头
+
+    // 显示加载中
+    addListbar("loading");   // 加载中提示
+
+    // 从服务器获取收藏列表
+    $.ajax({
+        type: mkPlayer.method,
+        url: mkPlayer.api,
+        data: "types=collections&action=list",
+        dataType: mkPlayer.dataType,
+        success: function(jsonData) {
+            if (jsonData.success && jsonData.collections) {
+                rem.mainList.html('');   // 清空加载中提示
+                addListhead();      // 重新添加列表头
+
+                // Create temporary playlist entry for the collection
+                if (!musicList[tempCollectionIndex]) {
+                    musicList[tempCollectionIndex] = {};
+                }
+                musicList[tempCollectionIndex].item = [];
+                musicList[tempCollectionIndex].name = '我的收藏';
+                musicList[tempCollectionIndex].id = 'collections';
+
+                if(jsonData.collections.length == 0) {
+                    addListbar("nodata");   // 列表中没有数据
+                } else {
+                    // 逐项添加数据
+                    for(var i=0; i<jsonData.collections.length; i++) {
+                        var tmpMusic = jsonData.collections[i];
+                        addItem(i + 1, tmpMusic.name, tmpMusic.artist, tmpMusic.album);
+
+                        // Add to temporary playlist
+                        musicList[tempCollectionIndex].item.push(tmpMusic);
+
+                        // 为每个列表项添加数据，以便后续获取完整信息
+                        $('.list-item[data-no="' + i + '"]').data('music', tmpMusic);
+                    }
+                    
+                    // Now set this temporary list as the display list
+                    rem.dislist = tempCollectionIndex;
+                }
+
+                // Add import/export buttons for collection list (both when empty and not empty)
+                addListbar("collections_export");    // 添加导出按钮
+                addListbar("collections_import");    // 添加导入按钮
+
+                // Add clear button for collection list only when there are items
+                if(jsonData.collections.length > 0) {
+                    addListbar("clear");    // 清空列表
+                }
+            } else {
+                rem.mainList.html('');   // 清空加载中提示
+                addListhead();      // 重新添加列表头
+                addListbar("nodata");   // 列表中没有数据
+            }
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown) {
+            rem.mainList.html('');   // 清空加载中提示
+            addListhead();      // 重新添加列表头
+            addListbar("nodata");   // 列表中没有数据
+            console.error('收藏列表加载失败: ' + XMLHttpRequest.status);
+        }
+    });
+}
+
+// 导出收藏列表为JSON文件
+function exportCollections() {
+    $.ajax({
+        type: mkPlayer.method,
+        url: mkPlayer.api,
+        data: "types=collections&action=list",
+        dataType: mkPlayer.dataType,
+        success: function(jsonData) {
+            if (jsonData.success && jsonData.collections) {
+                // Create a JSON file with the collections data
+                var dataStr = JSON.stringify(jsonData.collections, null, 2);
+                var dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                
+                var exportFileDefaultName = 'collections.json';
+                
+                var linkElement = document.createElement('a');
+                linkElement.setAttribute('href', dataUri);
+                linkElement.setAttribute('download', exportFileDefaultName);
+                linkElement.click();
+                
+                layer.msg('收藏列表导出成功');
+            } else {
+                layer.msg('收藏列表为空或导出失败');
+            }
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown) {
+            layer.msg('收藏列表导出失败 - ' + XMLHttpRequest.status);
+            console.error('收藏列表导出失败: ' + XMLHttpRequest + textStatus + errorThrown);
+        }
+    });
+}
+
+// 导入收藏列表JSON文件
+function importCollections() {
+    // Create a file input element
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = function(event) {
+        var file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+        
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var importedData = JSON.parse(e.target.result);
+                
+                if (!Array.isArray(importedData)) {
+                    layer.msg('导入的文件格式不正确');
+                    return;
+                }
+                
+                // Add the imported songs to collections one by one
+                var importedCount = 0;
+                var totalCount = importedData.length;
+                
+                function importNext(index) {
+                    if (index >= importedData.length) {
+                        layer.msg(`导入完成，成功导入 ${importedCount}/${totalCount} 首歌曲`);
+                        
+                        // Refresh collections UI after import completes
+                        refreshCollectionsUI();
+                        
+                        return;
+                    }
+                    
+                    var song = importedData[index];
+                    
+                    // Check if song already exists in collections
+                    $.ajax({
+                        type: mkPlayer.method,
+                        url: mkPlayer.api,
+                        data: "types=collections&action=check&id=" + song.id + "&source=" + song.source,
+                        dataType: mkPlayer.dataType,
+                        success: function(checkData) {
+                            if (!checkData.collected) {
+                                // Song doesn't exist, add it
+                                $.ajax({
+                                    type: mkPlayer.method,
+                                    url: mkPlayer.api,
+                                    data: "types=collections&action=add&id=" + song.id + 
+                                          "&source=" + song.source + 
+                                          "&name=" + encodeURIComponent(song.name) +
+                                          "&artist=" + encodeURIComponent(song.artist) +
+                                          "&album=" + encodeURIComponent(song.album) +
+                                          "&pic=" + encodeURIComponent(song.pic || '') +
+                                          "&url_id=" + encodeURIComponent(song.url_id) +
+                                          "&pic_id=" + encodeURIComponent(song.pic_id) +
+                                          "&lyric_id=" + encodeURIComponent(song.lyric_id),
+                                    dataType: mkPlayer.dataType,
+                                    success: function(addData) {
+                                        if (addData.success) {
+                                            importedCount++;
+                                        }
+                                        importNext(index + 1);
+                                    },
+                                    error: function() {
+                                        layer.msg(`导入第 ${index + 1} 首歌曲失败`);
+                                        importNext(index + 1);
+                                    }
+                                });
+                            } else {
+                                // Song already exists, continue to next
+                                importNext(index + 1);
+                            }
+                        },
+                        error: function() {
+                            layer.msg(`检查第 ${index + 1} 首歌曲状态失败`);
+                            importNext(index + 1);
+                        }
+                    });
+                }
+                
+                importNext(0);
+                
+            } catch (e) {
+                layer.msg('JSON文件格式错误');
+                console.error('JSON解析错误: ', e);
+            }
+        };
+        reader.readAsText(file);
+    };
+    
+    input.click();
+}
+
+// 刷新收藏列表界面
+function refreshCollectionsUI() {
+    // 更新内部的收藏列表数据
+    var tempCollectionIndex = 999;
+    
+    $.ajax({
+        type: mkPlayer.method,
+        url: mkPlayer.api,
+        data: "types=collections&action=list",
+        dataType: mkPlayer.dataType,
+        success: function(jsonData) {
+            if (jsonData.success && jsonData.collections) {
+                if (!musicList[tempCollectionIndex]) {
+                    musicList[tempCollectionIndex] = {};
+                }
+                musicList[tempCollectionIndex].item = jsonData.collections;
+                musicList[tempCollectionIndex].name = '我的收藏';
+                musicList[tempCollectionIndex].id = 'collections';
+                
+                // 如果当前正在查看收藏列表，也需要重新加载界面
+                if (rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
+                    loadCollections();
+                }
+            }
+        },
+        error: function() {
+            // 如果获取最新数据失败，至少刷新当前界面
+            if (rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
+                loadCollections();
+            }
+        }
+    });
+}
+
+// 刷新收藏列表界面 (兼容旧的函数名)
+function refreshCollectionUI() {
+    refreshCollectionsUI();
 }
 
 // 播放列表滚动到顶部
@@ -696,6 +1220,14 @@ function addListbar(types) {
         case "clear":   // 清空列表
             html = '<div class="list-item text-center list-clickable" id="list-foot" onclick="clearDislist();">清空列表</div>';
         break;
+        
+        case "collections_export":   // 收藏列表导出
+            html = '<div class="list-item text-center list-clickable" id="list-foot" onclick="exportCollections();">导出收藏</div>';
+        break;
+        
+        case "collections_import":   // 收藏列表导入
+            html = '<div class="list-item text-center list-clickable" id="list-foot" onclick="importCollections();">导入收藏</div>';
+        break;
     }
     rem.mainList.append(html);
 }
@@ -734,11 +1266,13 @@ function updateMinfo(music) {
     
     // 循环查找播放列表并更新信息
     for(var i=0; i<musicList.length; i++) {
-        for(var j=0; j<musicList[i].item.length; j++) {
-            // ID 对上了，那就更新信息
-            if(musicList[i].item[j].id == music.id && musicList[i].item[j].source == music.source) {
-                musicList[i].item[j] == music;  // 更新音乐信息
-                j = musicList[i].item.length;   // 一个列表中只找一首，找到了就跳出
+        if(musicList[i] && musicList[i].item) {  // Check if list and items exist
+            for(var j=0; j<musicList[i].item.length; j++) {
+                // ID 对上了，那就更新信息
+                if(musicList[i].item[j].id == music.id && musicList[i].item[j].source == music.source) {
+                    musicList[i].item[j] = music;  // 更新音乐信息 (fixed the comparison operator)
+                    j = musicList[i].item.length;   // 一个列表中只找一首，找到了就跳出
+                }
             }
         }
     }
@@ -752,14 +1286,16 @@ function refreshList() {
     $(".list-playing").removeClass("list-playing");        // 移除其它的正在播放
     
     if(rem.paused !== true) {   // 没有暂停
-        for(var i=0; i<musicList[rem.dislist].item.length; i++) {
-            // 与正在播放的歌曲 id 相同
-            if((musicList[rem.dislist].item[i].id !== undefined) && 
-              (musicList[rem.dislist].item[i].id == musicList[1].item[rem.playid].id) && 
-              (musicList[rem.dislist].item[i].source == musicList[1].item[rem.playid].source)) {
-                $(".list-item[data-no='" + i + "']").addClass("list-playing");  // 添加正在播放样式
-                
-                return true;    // 一般列表中只有一首，找到了赶紧跳出
+        if(rem.dislist != -1 && !(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections')) { // Skip for collections lists
+            for(var i=0; i<musicList[rem.dislist].item.length; i++) {
+                // 与正在播放的歌曲 id 相同
+                if((musicList[rem.dislist].item[i].id !== undefined) && 
+                  (musicList[rem.dislist].item[i].id == musicList[1].item[rem.playid].id) && 
+                  (musicList[rem.dislist].item[i].source == musicList[1].item[rem.playid].source)) {
+                    $(".list-item[data-no='" + i + "']").addClass("list-playing");  // 添加正在播放样式
+                    
+                    return true;    // 一般列表中只有一首，找到了赶紧跳出
+                }
             }
         }
     }
@@ -813,6 +1349,10 @@ function dataBox(choose) {
                 $(".btn[data-action='playing']").addClass('active');
             } else if(rem.dislist == 0) {  // 搜索
                 $(".btn[data-action='search']").addClass('active');
+            } else if(rem.dislist == -1) {  // 我的收藏
+                $(".btn[data-action='collections']").addClass('active');
+            } else {  // 其他播放列表
+                $(".btn[data-action='sheet']").addClass('active');
             }
         break;
         
@@ -939,12 +1479,22 @@ function clearUserlist() {
 
 // 清空当前显示的列表
 function clearDislist() {
-    musicList[rem.dislist].item.length = 0;  // 清空内容
-    if(rem.dislist == 1) {  // 正在播放列表
-        playerSavedata('playing', '');  // 清空本地记录
-        $(".sheet-item[data-no='1'] .sheet-cover").attr('src', 'images/player_cover.png');    // 恢复正在播放的封面
-    } else if(rem.dislist == 2) {   // 播放记录
-        playerSavedata('his', '');  // 清空本地记录
+    if(rem.dislist != -1 && !(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections')) { // Skip for collections lists
+        musicList[rem.dislist].item.length = 0;  // 清空内容
+        if(rem.dislist == 1) {  // 正在播放列表
+            playerSavedata('playing', '');  // 清空本地记录
+            $(".sheet-item[data-no='1'] .sheet-cover").attr('src', 'images/player_cover.png');    // 恢复正在播放的封面
+        } else if(rem.dislist == 2) {   // 播放记录
+            playerSavedata('his', '');  // 清空本地记录
+        }
+    } else if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
+        // For new collection lists, clear the temporary playlist
+        if(musicList[rem.dislist] && musicList[rem.dislist].item) {
+            musicList[rem.dislist].item.length = 0;
+        }
+    } else {
+        // For old collections (-1), we can't clear as it doesn't exist in musicList
+        layer.msg('收藏列表无法清空');
     }
     layer.msg('列表已被清空');
     dataBox("sheet");    // 在主界面显示出音乐专辑
@@ -954,12 +1504,19 @@ function clearDislist() {
 function refreshSheet() {
     // 调试信息输出
     if(mkPlayer.debug) {
-        console.log("开始播放列表 " + musicList[rem.playlist].name + " 中的歌曲");
+        if(rem.playlist !== undefined && rem.playlist != -1 && musicList[rem.playlist] && musicList[rem.playlist].name) {
+            console.log("开始播放列表 " + musicList[rem.playlist].name + " 中的歌曲");
+        } else if(rem.playlist == -1) {
+            console.log("开始播放收藏列表中的歌曲");
+        }
     }
     
     $(".sheet-playing").removeClass("sheet-playing");        // 移除其它的正在播放
     
-    $(".sheet-item[data-no='" + rem.playlist + "']").addClass("sheet-playing"); // 添加样式
+    // Only add sheet-playing class if playlist is valid
+    if(rem.playlist != -1) {
+        $(".sheet-item[data-no='" + rem.playlist + "']").addClass("sheet-playing"); // 添加样式
+    }
 }
 
 // 播放器本地存储信息
@@ -1081,6 +1638,54 @@ $(document).ready(function() {
         }
     });
 });
+
+// 切换收藏状态
+function toggleCollection(music) {
+    // Check the current status first
+    $.ajax({
+        type: mkPlayer.method,
+        url: mkPlayer.api,
+        data: "types=collections&action=check&id=" + music.id + "&source=" + music.source,
+        dataType: mkPlayer.dataType,
+        success: function(jsonData) {
+            var action = jsonData.collected ? 'remove' : 'add';
+            
+            $.ajax({
+                type: mkPlayer.method,
+                url: mkPlayer.api,
+                data: "types=collections&action=" + action + 
+                      "&id=" + music.id + 
+                      "&source=" + music.source + 
+                      "&name=" + encodeURIComponent(music.name) + 
+                      "&artist=" + encodeURIComponent(music.artist) + 
+                      "&album=" + encodeURIComponent(music.album) + 
+                      "&pic=" + encodeURIComponent(music.pic || '') + 
+                      "&url_id=" + encodeURIComponent(music.url_id) + 
+                      "&pic_id=" + encodeURIComponent(music.pic_id) + 
+                      "&lyric_id=" + encodeURIComponent(music.lyric_id),
+                dataType: mkPlayer.dataType,
+                success: function(jsonData) {
+                    if (jsonData.success) {
+                        if (action === 'add') {
+                            layer.msg('已收藏');
+                        } else {
+                            layer.msg('已取消收藏');
+                        }
+                    } else {
+                        layer.msg(jsonData.message || '操作失败');
+                    }
+                },
+                error: function(XMLHttpRequest, textStatus, errorThrown) {
+                    layer.msg('收藏操作失败 - ' + XMLHttpRequest.status);
+                    console.error(XMLHttpRequest + textStatus + errorThrown);
+                }
+            });
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown) {
+            console.error('收藏状态检查失败: ' + XMLHttpRequest.status);
+        }
+    });
+}
 
 // 重写评论函数，使其点击时显示当前正在显示的评论
 function comments(obj) {

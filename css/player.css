@@ -452,6 +452,57 @@ body {
 .icon-share:hover {
     background-position: -120px -40px;
 }
+.list-icon {
+    display: block;
+    width: 36px;
+    height: 36px;
+    background-image: url("../images/icon_list_menu.png");
+    float: left;
+    margin-left: 10px;
+    cursor: pointer;
+}
+.list-playing .icon-play{
+    display: none;
+}
+.icon-play {
+    background-position: -80px 0;
+}
+.icon-play:hover {
+    background-position: -120px 0;
+}
+.icon-download {
+    background-position: -80px -120px;
+}
+.icon-download:hover {
+    background-position: -120px -120px;
+}
+.icon-share {
+    background-position: -80px -40px;
+}
+.icon-share:hover {
+    background-position: -120px -40px;
+}
+/* 收藏图标使用带颜色背景与之前版本一致 */
+.icon-collect {
+    width: 36px;
+    height: 36px;
+    float: left;
+    margin-left: 10px;
+    cursor: pointer;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E") #5FB878 no-repeat center;
+    background-size: 65%;
+    border-radius: 4px;
+}
+.icon-collect:hover {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E") #FFB800 no-repeat center;
+    background-size: 65%;
+    border-radius: 4px;
+}
+.icon-collect.collected {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z'/%3E%3C/svg%3E") #FF5722 no-repeat center;
+    background-size: 65%;
+    border-radius: 4px;
+}
 
 /* 分享弹窗中的链接框 */
 .share-url {
@@ -784,6 +835,90 @@ body {
     top: 50%;
     margin-top: -10px;
 }
+
+.btn-prev{
+    background-position: 0 -30px;
+    width: 19px;
+    height: 20px;
+    margin-top: -10px;
+}
+
+.btn-play{
+    width: 19px;
+    height: 29px;
+    margin-top: -14.5px;
+    left: 36%;
+    margin-left: -10.5px;
+}
+.btn-next{
+    background-position: 0 -52px;
+    right: 30%;
+    width: 19px;
+    height: 20px;
+    margin-top: -10px;
+}
+.btn-order{
+    background-position: 0 -173px;
+    background-size: 450%;
+    right: 0;
+    width: 25px;
+    height: 25px;
+    margin-top: -10px;
+}
+.btn-order-single {
+    background-position: 0 -196px;
+}
+.btn-order-list {
+    background-position: 0 -173px;
+}
+.btn-order-random {
+    background-position: 0 -62px;
+    height: 18px;
+    margin-top: -9px;
+}
+
+.btn-prev{
+    background-position: 0 -30px;
+    width: 19px;
+    height: 20px;
+    margin-top: -10px;
+}
+
+.btn-play{
+    width: 19px;
+    height: 29px;
+    margin-top: -14.5px;
+    left: 36%;
+    margin-left: -10.5px;
+}
+.btn-next{
+    background-position: 0 -52px;
+    right: 30%;
+    width: 19px;
+    height: 20px;
+    margin-top: -10px;
+}
+.btn-order{
+    background-position: 0 -173px;
+    background-size: 450%;
+    right: 0;
+    width: 25px;
+    height: 25px;
+    margin-top: -10px;
+}
+.btn-order-single {
+    background-position: 0 -196px;
+}
+.btn-order-list {
+    background-position: 0 -173px;
+}
+.btn-order-random {
+    background-position: 0 -62px;
+    height: 18px;
+    margin-top: -9px;
+}
+
+
 
 /* 以下是孟坤进度条控件样式区域 */
 /* 进度条可点击区域 */

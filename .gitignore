@@ -19,6 +19,7 @@
  
 # OS or Editor folders
 .DS_Store
+*.json
 ._*
 .cache
 .project

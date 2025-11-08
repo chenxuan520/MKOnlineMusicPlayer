@@ -277,6 +277,119 @@ switch($types)   // 根据请求的 Api，执行相应操作
         echojson(json_encode($data));
         break;
 
+    case 'collections':
+        $action = getParam('action'); // add, remove, list, check
+        $id = getParam('id');        // song id
+        $source = getParam('source'); // song source
+        $name = getParam('name');    // song name
+        $artist = getParam('artist'); // song artist
+        $album = getParam('album');  // song album
+        $pic = getParam('pic');      // song pic
+        $url_id = getParam('url_id'); // song url_id
+        $pic_id = getParam('pic_id'); // song pic_id
+        $lyric_id = getParam('lyric_id'); // song lyric_id
+        
+        $collectionFile = 'collections/collections.json';
+        
+        // Ensure collections directory exists with proper permissions for Docker environment
+        if (!is_dir('collections')) {
+            // Try to create directory with 0777 permissions to ensure it's writable in Docker
+            if (!mkdir('collections', 0777, true)) {
+                $response = array('success' => false, 'message' => '无法创建收藏目录，请确保项目根目录具有写入权限 (chmod 777)');
+                echo json_encode($response);
+                exit();
+            }
+        } elseif (!is_writable('collections')) {
+            // If directory exists but is not writable, try to make it writable
+            if (!chmod('collections', 0777)) {
+                $response = array('success' => false, 'message' => '收藏目录不可写，请确保项目根目录具有写入权限 (chmod 777)');
+                echo json_encode($response);
+                exit();
+            }
+        }
+        
+        // Load existing collections
+        $collections = array();
+        if (file_exists($collectionFile)) {
+            $collections = json_decode(file_get_contents($collectionFile), true);
+            if (!$collections) {
+                $collections = array();
+            }
+        }
+        
+        $response = array();
+        
+        switch($action) {
+            case 'add':
+                // Check if song already exists in collections
+                $exists = false;
+                foreach($collections as $key => $song) {
+                    if ($song['id'] == $id && $song['source'] == $source) {
+                        $exists = true;
+                        break;
+                    }
+                }
+                
+                if (!$exists) {
+                    $newSong = array(
+                        'id' => $id,
+                        'name' => $name,
+                        'artist' => $artist,
+                        'album' => $album,
+                        'source' => $source,
+                        'url_id' => $url_id,
+                        'pic_id' => $pic_id,
+                        'lyric_id' => $lyric_id,
+                        'pic' => $pic
+                    );
+                    array_push($collections, $newSong);
+                    file_put_contents($collectionFile, json_encode($collections));
+                    $response = array('success' => true, 'message' => '歌曲已收藏');
+                } else {
+                    $response = array('success' => false, 'message' => '歌曲已收藏');
+                }
+                break;
+                
+            case 'remove':
+                $songRemoved = false;
+                foreach($collections as $key => $song) {
+                    if ($song['id'] == $id && $song['source'] == $source) {
+                        array_splice($collections, $key, 1);
+                        $songRemoved = true;
+                        break;
+                    }
+                }
+                
+                if ($songRemoved) {
+                    file_put_contents($collectionFile, json_encode($collections));
+                    $response = array('success' => true, 'message' => '歌曲已取消收藏');
+                } else {
+                    $response = array('success' => false, 'message' => '歌曲不在收藏列表中');
+                }
+                break;
+                
+            case 'list':
+                $response = array('success' => true, 'collections' => $collections);
+                break;
+                
+            case 'check':
+                $isCollected = false;
+                foreach($collections as $song) {
+                    if ($song['id'] == $id && $song['source'] == $source) {
+                        $isCollected = true;
+                        break;
+                    }
+                }
+                $response = array('success' => true, 'collected' => $isCollected);
+                break;
+                
+            default:
+                $response = array('success' => false, 'message' => 'Invalid action');
+        }
+        
+        echojson(json_encode($response));
+        break;
+
     default:
         echo '<!doctype html><html><head><meta charset="utf-8"><title>信息</title><style>* {font-family: microsoft yahei}</style></head><body> <h2>MKOnlinePlayer</h2><h3>Github: https://github.com/mengkunsoft/MKOnlineMusicPlayer</h3><br>';
         if(!defined('DEBUG') || DEBUG !== true) {   // 非调试模式
@@ -302,7 +415,7 @@ switch($types)   // 根据请求的 Api，执行相应操作
  * @param $dir 路径
  */
 function createFolders($dir) {
-    return is_dir($dir) or (createFolders(dirname($dir)) and mkdir($dir, 0755));
+    return is_dir($dir) or (createFolders(dirname($dir)) and mkdir($dir, 0777));
 }
 
 /**
