@@ -291,9 +291,21 @@ switch($types)   // 根据请求的 Api，执行相应操作
         
         $collectionFile = 'collections/collections.json';
         
-        // Ensure collections directory exists
+        // Ensure collections directory exists with proper permissions for Docker environment
         if (!is_dir('collections')) {
-            createFolders('collections');
+            // Try to create directory with 0777 permissions to ensure it's writable in Docker
+            if (!mkdir('collections', 0777, true)) {
+                $response = array('success' => false, 'message' => '无法创建收藏目录，请确保项目根目录具有写入权限 (chmod 777)');
+                echo json_encode($response);
+                exit();
+            }
+        } elseif (!is_writable('collections')) {
+            // If directory exists but is not writable, try to make it writable
+            if (!chmod('collections', 0777)) {
+                $response = array('success' => false, 'message' => '收藏目录不可写，请确保项目根目录具有写入权限 (chmod 777)');
+                echo json_encode($response);
+                exit();
+            }
         }
         
         // Load existing collections
@@ -403,7 +415,7 @@ switch($types)   // 根据请求的 Api，执行相应操作
  * @param $dir 路径
  */
 function createFolders($dir) {
-    return is_dir($dir) or (createFolders(dirname($dir)) and mkdir($dir, 0755));
+    return is_dir($dir) or (createFolders(dirname($dir)) and mkdir($dir, 0777));
 }
 
 /**
