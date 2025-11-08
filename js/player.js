@@ -418,10 +418,63 @@ function play(music) {
 
         // 监听 canplaythrough 事件，确保获取到歌曲时长
         $(rem.audio[0]).one('canplaythrough', function() {
-            if (rem.audio[0].duration < 60) { // 如果歌曲时长短于一分钟 (60秒)
+            if (rem.audio[0].duration < 90) { // 如果歌曲时长短于1.5分钟 (90秒)
                 rem.audio[0].pause();
                 layer.msg('歌曲无法播放已自动跳过');
-                autoNextMusic(); // 自动播放下一首
+
+                // 从当前播放列表中移除这首歌
+                if (rem.playlist === 1 && rem.playid !== undefined && musicList[1] && musicList[1].item && rem.playid < musicList[1].item.length) {
+                    // 记录要移除的歌曲信息，用于UI updating
+                    var musicToRemove = musicList[1].item[rem.playid];
+
+                    // 从播放列表中移除当前歌曲
+                    musicList[1].item.splice(rem.playid, 1);
+
+                    // 保存更新后的播放列表
+                    playerSavedata('playing', musicList[1].item);
+
+                    // 如果当前显示的列表也是"正在播放"列表（dislist == 1），需要相应地更新UI
+                    if (rem.dislist === 1) {
+                        // 移除UI中对应的列表项
+                        $('.list-item[data-no="' + rem.playid + '"]').remove();
+
+                        // 重新编号列表项和更新data-no属性（因为移除了一个项目，后续项的索引都变了）
+                        $('.list-item').each(function(index) {
+                            if (index >= rem.playid) {  // Only update items at or after the removed position
+                                $(this).attr('data-no', index);
+                                $(this).find('.list-num').text(index + 1);  // List numbers start from 1
+                            }
+                        });
+
+                        // Update the list display
+                        refreshList(); // Refresh the list display after item removal
+                    }
+
+                    // 如果列表不为空，播放当前索引的新歌曲（因为移除后原索引处是下一首歌）
+                    if (musicList[1].item.length > 0) {
+                        if (rem.playid >= musicList[1].item.length) {
+                            // 如果原播放位置超出新列表范围，回到开头
+                            rem.playid = 0;
+                        }
+                        // 重新调用 playList 从当前位置播放新歌曲
+                        playList(rem.playid);
+                    } else {
+                        // 如果播放列表为空了，清空播放状态
+                        rem.playlist = undefined;
+                        rem.playid = undefined;
+
+                        // 清空列表显示
+                        if (rem.dislist === 1) {
+                            rem.mainList.html('');
+                            addListhead();      // 重新添加列表头
+                            addListbar("nodata");   // 列表中没有数据
+                        }
+                    }
+                    return;
+                }
+
+                // 播放下一首歌
+                autoNextMusic();
                 return;
             }
             rem.audio[0].play();
@@ -445,6 +498,12 @@ function play(music) {
 
 // 音乐进度条拖动回调函数
 function mBcallback(newVal) {
+    // 检查音频对象是否有效以及 duration 是否可用
+    if (!rem.audio[0] || !rem.audio[0].duration || isNaN(rem.audio[0].duration) || !isFinite(rem.audio[0].duration) ||
+        isNaN(newVal) || !isFinite(newVal)) {
+        return; // 无效参数，直接返回
+    }
+    
     var newTime = rem.audio[0].duration * newVal;
     // 应用新的进度
     rem.audio[0].currentTime = newTime;
