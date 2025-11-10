@@ -74,7 +74,7 @@ body {
     background-image: -o-linear-gradient(200deg, #7f7280, #000000);
     background-image: -ms-linear-gradient(200deg, #7f7280, #000000);
     background-image: linear-gradient(200deg, #7f7280, #000000);
-    
+
     overflow: hidden;
 }
 /* 模糊图像层 */
@@ -107,8 +107,8 @@ body {
     width: 100%;
     height: 100%;
     background-color: #000;
-    filter:alpha(opacity=30); 
-    -moz-opacity:0.3; 
+    filter:alpha(opacity=30);
+    -moz-opacity:0.3;
     opacity:0.3;
     top: 0;
     left: 0;
@@ -116,8 +116,8 @@ body {
 }
 
 .mobile-mask {
-    filter:alpha(opacity=60); 
-    -moz-opacity:0.6; 
+    filter:alpha(opacity=60);
+    -moz-opacity:0.6;
     opacity:0.6;
 }
 
@@ -490,19 +490,58 @@ body {
     float: left;
     margin-left: 10px;
     cursor: pointer;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E") #5FB878 no-repeat center;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E") transparent no-repeat center;
     background-size: 65%;
     border-radius: 4px;
+    transition: transform 0.2s ease;
 }
 .icon-collect:hover {
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E") #FFB800 no-repeat center;
+    transform: scale(1.2);
+    background-color: transparent; /* 保持透明 */
     background-size: 65%;
     border-radius: 4px;
 }
 .icon-collect.collected {
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z'/%3E%3C/svg%3E") #FF5722 no-repeat center;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z'/%3E%3C/svg%3E") transparent no-repeat center;
     background-size: 65%;
     border-radius: 4px;
+}
+.icon-collect.collected:hover {
+    transform: scale(1.2);
+    background-color: transparent; /* 保持透明 */
+}
+
+/* 上移/下移按钮样式 */
+.icon-move-up {
+    width: 36px;
+    height: 36px;
+    float: left;
+    margin-left: 10px;
+    cursor: pointer;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z'/%3E%3C/svg%3E") transparent no-repeat center;
+    background-size: 65%;
+    border-radius: 4px;
+    transition: transform 0.2s ease;
+}
+.icon-move-up:hover {
+    transform: scale(1.2);
+    background-color: transparent; /* 保持透明 */
+}
+
+.icon-move-down {
+    width: 36px;
+    height: 36px;
+    float: left;
+    margin-left: 10px;
+    cursor: pointer;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z'/%3E%3C/svg%3E") transparent no-repeat center;
+    background-size: 65%;
+    border-radius: 4px;
+    transition: transform 0.2s ease;
+}
+.icon-move-down:hover {
+    transform: scale(1.2);
+    background-color: transparent; /* 保持透明 */
 }
 
 /* 分享弹窗中的链接框 */
@@ -731,28 +770,28 @@ body {
 .con-btn a{
     display: inline-block;
     position: absolute;
-    top: 50%; 
+    top: 50%;
 }
 .btn-prev{
     background-position: 0 -30px;
     width: 19px;
     height: 20px;
-    margin-top: -10px; 
+    margin-top: -10px;
 }
 
 .btn-play{
     width: 19px;
     height: 29px;
-    margin-top: -14.5px; 
+    margin-top: -14.5px;
     left: 36%;
-    margin-left: -10.5px; 
+    margin-left: -10.5px;
 }
 .btn-next{
     background-position: 0 -52px;
     right: 30%;
     width: 19px;
     height: 20px;
-    margin-top: -10px; 
+    margin-top: -10px;
 }
 .btn-order{
     background-position: 0 -173px;
@@ -760,7 +799,7 @@ body {
     right: 0;
     width: 25px;
     height: 25px;
-    margin-top: -10px; 
+    margin-top: -10px;
 }
 .btn-order-single {
     background-position: 0 -196px;
@@ -946,8 +985,8 @@ body {
     top: 50%;
     left: 0;
     right: 0;
-    height: 2px; 
-    margin-top: -1px; 
+    height: 2px;
+    margin-top: -1px;
     border-radius: 2px;
     background-color: #808284;
     overflow: hidden;
@@ -955,11 +994,11 @@ body {
 /* 进度条已完成区域 */
 .mkpgb-cur {
     position: absolute;
-    background-color: #D8D8D8; 
-    width: 0; 
-    height: 2px; 
+    background-color: #D8D8D8;
+    width: 0;
+    height: 2px;
     top: 50%;
-    margin-top: -1px; 
+    margin-top: -1px;
     border-radius: 2px;
     transition: all 0.25s ease;
     -webkit-transition: all 0.25s ease;
@@ -969,15 +1008,15 @@ body {
 }
 /* 进度条小点 */
 .mkpgb-dot {
-    width: 10px; 
-    height: 10px; 
-    background-color: #fff; 
-    border-radius: 5px; 
-    overflow: hidden; 
-    position: absolute; 
-    left: 0px; 
-    margin-left: -5px; 
-    top: 50%; 
+    width: 10px;
+    height: 10px;
+    background-color: #fff;
+    border-radius: 5px;
+    overflow: hidden;
+    position: absolute;
+    left: 0px;
+    margin-left: -5px;
+    top: 50%;
     margin-top: -5px;
     transition: all 0.25s ease;
     -webkit-transition: all 0.25s ease;
@@ -1046,7 +1085,7 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) scale(0.7);
-    box-shadow: 
+    box-shadow:
         0 10px 30px rgba(0, 0, 0, 0.15),
         0 0 0 1px rgba(0, 0, 0, 0.08);
     border: 1px solid rgba(0, 0, 0, 0.1);

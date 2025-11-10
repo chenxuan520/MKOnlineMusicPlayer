@@ -192,6 +192,7 @@ $(function(){
         // 还没有追加菜单则加上菜单
         if(!$(this).data("loadmenu")) {
             var target = $(this).find(".music-name");
+            var isCollectionsList = (rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections');
             var html = '<span class="music-name-cult">' +
             target.html() +
             '</span>' +
@@ -199,8 +200,15 @@ $(function(){
                 '<span class="list-icon icon-play" data-function="play" title="点击播放这首歌"></span>' +
                 '<span class="list-icon icon-download list-mobile-menu" title="点击下载这首歌"></span>' +
                 '<span class="list-icon icon-share" data-function="share" title="点击分享这首歌"></span>' +
-                '<span class="list-icon icon-collect" data-function="collect" title="收藏这首歌"></span>' +
-            '</div>';
+                '<span class="list-icon icon-collect" data-function="collect" title="收藏这首歌"></span>';
+
+            // 如果是收藏列表，添加移动按钮
+            if (isCollectionsList) {
+                html += '<span class="list-icon icon-move-up" data-function="move-up" title="上移"></span>' +
+                        '<span class="list-icon icon-move-down" data-function="move-down" title="下移"></span>';
+            }
+
+            html += '</div>';
             target.html(html);
             $(this).data("loadmenu", true);
 
@@ -237,7 +245,7 @@ $(function(){
     });
 
     // 列表中的菜单点击
-    $(".music-list").on("click",".icon-play,.icon-download,.icon-share,.icon-collect", function() {
+    $(".music-list").on("click",".icon-play,.icon-download,.icon-share,.icon-collect,.icon-move-up,.icon-move-down", function() {
         var num = parseInt($(this).parent().data("no"));
         if(isNaN(num)) return false;
         switch($(this).data("function")) {
@@ -283,6 +291,16 @@ $(function(){
                         icon.addClass('collected');
                         icon.attr('title', '取消收藏');
                     }
+                }
+            break;
+            case "move-up":   // 上移歌曲
+                if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
+                    moveCollectionItem(num, -1); // 向上移动
+                }
+            break;
+            case "move-down":   // 下移歌曲
+                if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
+                    moveCollectionItem(num, 1); // 向下移动
                 }
             break;
         }
@@ -1807,4 +1825,89 @@ function comments(obj) {
             console.error(XMLHttpRequest + textStatus + errorThrown);
         }   // error
     });//ajax
+}
+
+// 移动收藏列表中的歌曲位置
+// 参数：当前索引，移动方向（-1为上移，1为下移）
+function moveCollectionItem(currentIndex, direction) {
+    // 确保当前在收藏列表中
+    if(rem.dislist < 0 || !musicList[rem.dislist] || musicList[rem.dislist].id !== 'collections') {
+        layer.msg('请在收藏列表中操作');
+        return;
+    }
+
+    var collectionList = musicList[rem.dislist].item;
+
+    // 检查索引范围
+    if(currentIndex < 0 || currentIndex >= collectionList.length) {
+        layer.msg('无效的歌曲索引');
+        return;
+    }
+
+    // 计算目标索引
+    var targetIndex = currentIndex + direction;
+
+    // 检查目标索引范围
+    if(targetIndex < 0 || targetIndex >= collectionList.length) {
+        if(direction === -1) {
+            layer.msg('已在列表顶部，无法上移');
+        } else {
+            layer.msg('已在列表底部，无法下移');
+        }
+        return;
+    }
+
+    // 交换位置
+    var temp = collectionList[currentIndex];
+    collectionList[currentIndex] = collectionList[targetIndex];
+    collectionList[targetIndex] = temp;
+
+    // 如果后端支持排序功能，则调用API保存排序
+    $.ajax({
+        type: mkPlayer.method,
+        url: mkPlayer.api,
+        data: {
+            types: 'collections',
+            action: 'reorder',
+            collections: JSON.stringify(collectionList)
+        },
+        dataType: mkPlayer.dataType,
+        success: function(response) {
+            if(response.success) {
+                // 重新加载列表以显示新的顺序
+                loadCollections();
+
+                // 显示成功消息
+                if(direction === -1) {
+                    layer.msg('歌曲已上移');
+                } else {
+                    layer.msg('歌曲已下移');
+                }
+            } else {
+                // 排序功能可能不存在（比如API未更新），只在前端更新
+                // 重新加载列表以显示新的顺序（仅在当前会话中有效）
+                loadCollections();
+
+                // 显示成功消息
+                if(direction === -1) {
+                    layer.msg('歌曲已上移（刷新页面后可能重置）');
+                } else {
+                    layer.msg('歌曲已下移（刷新页面后可能重置）');
+                }
+            }
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown) {
+            // 排序功能不存在或服务器错误，只在前端更新
+            // 重新加载列表以显示新的顺序（仅在当前会话中有效）
+            loadCollections();
+
+            // 显示提醒消息
+            if(direction === -1) {
+                layer.msg('歌曲已上移（刷新页面后可能重置）');
+            } else {
+                layer.msg('歌曲已下移（刷新页面后可能重置）');
+            }
+            console.info('后端排序功能可能未启用，排序仅在当前会话中有效');
+        }
+    });
 }
