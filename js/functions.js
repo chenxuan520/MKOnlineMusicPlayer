@@ -486,7 +486,7 @@ function getAudioTime () {
     var duration = audio.duration;
     var currentTime = audio.currentTime;
     if (duration && currentTime) {
-        return (formatTime(duration) + '/' + formatTime(currentTime));
+        return (formatTime(currentTime) + '/' + formatTime(duration));
     } else {
         return '00:00/00:00';
     }
