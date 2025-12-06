@@ -36,18 +36,22 @@
         bottom: 0;
         left: 0;
         right: 0;
+        display: flex;
+        flex-wrap: nowrap;  /* 防止换行 */
     }
     .btn {
         margin: 0;
         padding: 0;
-        width: 25%;
+        flex: 1;  /* 使用flex让按钮平分空间 */
         height: 100%;
         display: block;
-        float: left;
         border: none;
         text-align: center;
         line-height: 35px;
         color: #C5C5C5;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
     .btn:hover {
         border: none;
