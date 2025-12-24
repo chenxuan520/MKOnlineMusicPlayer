@@ -179,6 +179,31 @@ switch($types)   // 根据请求的 Api，执行相应操作
             ]);
         }
 
+        // 根据付费标识过滤歌曲
+        $song_list = json_decode($data, true);
+        if (is_array($song_list)) {
+            $filtered_list = array_values(array_filter($song_list, function($song) {
+                if (isset($song['source'])) {
+                    switch ($song['source']) {
+                        case 'netease':
+                            // fee=1 是 VIP, fee=4 是付费专辑.
+                            return isset($song['fee']) && $song['fee'] != 1 && $song['fee'] != 4;
+                        case 'tencent':
+                            // pay.pay_play=1 表示需要付费
+                            return !(isset($song['pay']['pay_play']) && $song['pay']['pay_play'] == 1);
+                        case 'kugou':
+                            // privilege=0 是可播放
+                            return !isset($song['privilege']) || $song['privilege'] == 0;
+                        default:
+                            // 对于其他未知来源，暂时默认放行
+                            return true;
+                    }
+                }
+                return true;
+            }));
+            $data = json_encode($filtered_list);
+        }
+
         echojson($data);
         break;
 

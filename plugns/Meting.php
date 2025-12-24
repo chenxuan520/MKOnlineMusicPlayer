@@ -1624,6 +1624,7 @@ class Meting
             'url_id'   => $data['id'],
             'lyric_id' => $data['id'],
             'source'   => 'netease',
+            'fee'      => isset($data['fee']) ? $data['fee'] : 0,
         );
         if (isset($data['al']['picUrl'])) {
             preg_match('/\/(\d+)\./', $data['al']['picUrl'], $match);
@@ -1650,6 +1651,7 @@ class Meting
             'url_id'   => $data['mid'],
             'lyric_id' => $data['mid'],
             'source'   => 'tencent',
+            'pay'      => isset($data['pay']) ? $data['pay'] : [],
         );
         foreach ($data['singer'] as $vo) {
             $result['artist'][] = $vo['name'];
@@ -1688,6 +1690,7 @@ class Meting
             'pic_id'   => $data['hash'],
             'lyric_id' => $data['hash'],
             'source'   => 'kugou',
+            'privilege' => isset($data['privilege']) ? $data['privilege'] : 0,
         );
         list($result['artist'], $result['name']) = explode(' - ', $result['name'], 2);
         $result['artist'] = explode('、', $result['artist']);
