@@ -24,7 +24,8 @@ var mkPlayer = {
     tempPath: "temp/", // 临时文件目录
     filterVip: true, // 默认开启 VIP 过滤
     skipVip: true, // 默认开启自动跳过 VIP 歌曲 (短歌曲)
-    autoLoad: true, // 默认开启自动加载列表
+    autoLoad: false, // 默认关闭自动加载列表
+    hotCommentsOnly: false, // 默认关闭只看热门评论
     bgConfig: { type: 'default', url: '' } // 背景设置配置
 };
 
@@ -49,6 +50,12 @@ $(function() {
     var storedAutoLoad = playerReaddata('autoLoad');
     if (storedAutoLoad !== null && storedAutoLoad !== undefined) {
         mkPlayer.autoLoad = storedAutoLoad;
+    }
+
+    // 读取本地存储的 只看热门评论设置
+    var storedHotCommentsOnly = playerReaddata('hotCommentsOnly');
+    if (storedHotCommentsOnly !== null && storedHotCommentsOnly !== undefined) {
+        mkPlayer.hotCommentsOnly = storedHotCommentsOnly;
     }
 
     // 读取本地存储的背景设置

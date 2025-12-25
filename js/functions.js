@@ -447,7 +447,7 @@ $(function(){
                 endOpacity : 1 // 图像最终的不透明度
             });
         }
-        
+
         // 初始化时如果启用了自定义背景，立即应用
         if (mkPlayer.bgConfig && mkPlayer.bgConfig.type === 'custom' && mkPlayer.bgConfig.url) {
              updateBackground(mkPlayer.bgConfig.url);
@@ -594,6 +594,12 @@ function settingsBox() {
                 $(layero).find("input[name='auto-load']").prop("checked", false);
             }
 
+            if (mkPlayer.hotCommentsOnly) {
+                $(layero).find("input[name='hot-comments-only']").prop("checked", true);
+            } else {
+                $(layero).find("input[name='hot-comments-only']").prop("checked", false);
+            }
+
             if (mkPlayer.filterVip) {
                 $(layero).find("input[name='filter-vip']").prop("checked", true);
             } else {
@@ -608,16 +614,16 @@ function settingsBox() {
             // 渲染背景设置状态
             var bgType = (mkPlayer.bgConfig && mkPlayer.bgConfig.type) || 'default';
             $(layero).find("input[name='bg-type'][value='" + bgType + "']").prop("checked", true);
-            
+
             var bgUrl = (mkPlayer.bgConfig && mkPlayer.bgConfig.url) || '';
             $(layero).find("input[name='bg-url']").val(bgUrl);
-            
+
             if (bgType === 'custom') {
                 $(layero).find('#bg-custom-input-area').show();
             }
 
             form.render();
-            
+
             // 监听背景模式切换
             form.on('radio(bg-type)', function(data){
                 if(data.value === 'custom'){
@@ -626,7 +632,7 @@ function settingsBox() {
                     $(layero).find('#bg-custom-input-area').slideUp();
                 }
             });
-            
+
             // 监听图片测试
             $(layero).find('#test-bg-btn').click(function(){
                 var url = $(layero).find("input[name='bg-url']").val();
@@ -634,9 +640,9 @@ function settingsBox() {
                     layer.msg('请输入图片URL');
                     return;
                 }
-                
+
                 var loadIdx = layer.msg('正在测试图片...', {icon: 16, time: 0, shade: 0.01});
-                
+
                 var img = new Image();
                 img.onload = function(){
                     layer.close(loadIdx);
@@ -655,35 +661,38 @@ function settingsBox() {
             form.on('submit(settings-submit)', function(data){
                 // 获取开关状态
                 var isAutoLoad = $(layero).find("input[name='auto-load']").prop("checked");
+                var isHotCommentsOnly = $(layero).find("input[name='hot-comments-only']").prop("checked");
                 var isFilterVip = $(layero).find("input[name='filter-vip']").prop("checked");
                 var isSkipVip = $(layero).find("input[name='skip-vip']").prop("checked");
-                
+
                 // 获取背景设置
                 var newBgType = $(layero).find("input[name='bg-type']:checked").val();
                 var newBgUrl = $(layero).find("input[name='bg-url']").val();
-                
+
                 // 如果选择了自定义但没有URL，提示错误
                 if (newBgType === 'custom' && !newBgUrl) {
                     layer.msg('请填写自定义图片URL');
                     return false;
                 }
-                
+
                 // 更新全局配置
                 mkPlayer.autoLoad = isAutoLoad;
+                mkPlayer.hotCommentsOnly = isHotCommentsOnly;
                 mkPlayer.filterVip = isFilterVip;
                 mkPlayer.skipVip = isSkipVip;
-                
+
                 mkPlayer.bgConfig = {
                     type: newBgType,
                     url: newBgUrl
                 };
-                
+
                 // 保存到本地存储
                 playerSavedata('autoLoad', mkPlayer.autoLoad);
+                playerSavedata('hotCommentsOnly', mkPlayer.hotCommentsOnly);
                 playerSavedata('filterVip', mkPlayer.filterVip);
                 playerSavedata('skipVip', mkPlayer.skipVip);
                 playerSavedata('bgConfig', mkPlayer.bgConfig);
-                
+
                 // 应用背景更改
                 if (newBgType === 'custom') {
                     updateBackground(newBgUrl, false); // 自定义不虚化
@@ -702,7 +711,7 @@ function settingsBox() {
                         updateBackground("images/player_cover.png", true);
                     }
                 }
-                
+
                 isSaved = true; // 标记已保存
                 layer.msg('设置已保存');
                 layer.closeAll('page');
@@ -1007,11 +1016,11 @@ function ajaxShare(music) {
 // 参数：是否模糊（可选，默认 true）
 function updateBackground(url, enableBlur) {
     if (!url) return;
-    
+
     if (enableBlur === undefined) {
         enableBlur = true;
     }
-    
+
     // 移动端背景
     if (rem.isMobile) {
         $("#mobile-blur").css('background-image', 'url("' + url + '")');
@@ -1028,20 +1037,20 @@ function updateBackground(url, enableBlur) {
                 'background-size': 'cover',
                 'opacity': 1
             });
-            
+
             // 手动添加遮罩层，保持视觉一致性
             // 检查是否存在遮罩层，不存在则添加
             if ($("#blur-img .blur-mask").length === 0) {
                 $("#blur-img").append('<div class="blur-mask"></div>');
             }
             $("#blur-img .blur-mask").show();
-            
+
         } else {
             // 默认模式，模糊 -> 使用插件
             $("#blur-img").css('background-image', ''); // 清除 CSS 背景
             $("#blur-img").backgroundBlur(url);
-            $("#blur-img").animate({opacity:"1"}, 2000); 
-            
+            $("#blur-img").animate({opacity:"1"}, 2000);
+
             // 插件会重新生成结构，我们需要确保遮罩层显示
             // 使用 setTimeout 确保插件生成完毕后再操作，虽然 backgroundBlur 是同步的，但保险起见
             // 另外 backgroundBlur 插件的 overlayClass 参数会自动创建带该 class 的 div
@@ -1082,9 +1091,9 @@ function changeCover(music) {
                     } else {
                         imgload = true;     // 告诉下面的函数，图片已准备好
                     }
-    
+
                 });
-    
+
                 // 渐变动画
                 $("#blur-img").animate({opacity: "0.2"}, 1000, function(){
                     if(imgload) {   // 如果图片已经加载好了
@@ -1683,10 +1692,10 @@ function initList() {
     } else {
         rem.sheetLoaded = false;
         // 如果不自动加载，侧边栏只有 正在播放 和 历史记录。
-        
+
         // 但我们仍然需要添加登陆条，因为它位于列表底部
         sheetBar();
-        
+
         // 确保加载当前默认列表的内容（通常是正在播放）
         mkPlayer.defaultlist = 1; // 强制默认为正在播放列表
         loadList(mkPlayer.defaultlist);
@@ -1698,7 +1707,7 @@ rem.initSheetList = function() {
     if(rem.sheetLoaded) return; // 避免重复加载
 
     // 移除已有的登陆条（如果有）
-    $(".login-bar").remove();
+    $("#sheet-bar").remove();
 
     // 显示所有的歌单（从系统歌单开始）
     for(var i=3; i<musicList.length; i++) {
@@ -1718,7 +1727,7 @@ rem.initSheetList = function() {
         // 在前端显示出来
         addSheet(i, musicList[i].name, musicList[i].cover);
     }
-    
+
     // 登陆了，但歌单又没有，说明是在刷新歌单
     // 注意：这里可能需要检查是否已经加载过用户歌单
     var tmp_ulist = playerReaddata('ulist');
@@ -2006,13 +2015,21 @@ function comments(obj) {
 
             // 优先使用热门评论，如果没有热门评论则使用普通评论
             // 如果有热门评论，就将热门评论和前50条普通评论合并
-            if (hotComments.length > 0) {
-                rem.comments = hotComments.concat(normalComments.slice(0, 50)); // 热门评论 + 前50条普通评论
-            } else if (normalComments.length > 0) {
-                rem.comments = normalComments;
+            if (mkPlayer.hotCommentsOnly) {
+                if (hotComments.length > 0) {
+                    rem.comments = hotComments;
+                } else {
+                    rem.comments = []; // 如果只看热评但没有热评，则为空
+                }
             } else {
-                rem.comments = [];
-                return;
+                if (hotComments.length > 0) {
+                    rem.comments = hotComments.concat(normalComments.slice(0, 50)); // 热门评论 + 前50条普通评论
+                } else if (normalComments.length > 0) {
+                    rem.comments = normalComments;
+                } else {
+                    rem.comments = [];
+                    return;
+                }
             }
 
             // 保存热门评论数量，用于判断某条评论是否为热门评论
