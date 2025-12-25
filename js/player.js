@@ -21,7 +21,10 @@ var mkPlayer = {
     volume: 0.75,        // 默认音量值(0~1之间)
     version: "v2.44",    // 播放器当前版本号(仅供调试)
     debug: false,   // 是否开启调试模式(true/false)
-    tempPath: "temp/" // 临时文件目录
+    tempPath: "temp/", // 临时文件目录
+    filterVip: true, // 默认开启 VIP 过滤
+    skipVip: true, // 默认开启自动跳过 VIP 歌曲 (短歌曲)
+    bgConfig: { type: 'default', url: '' } // 背景设置配置
 };
 
 // 硬编码密码
@@ -29,6 +32,24 @@ const PASSWORD = "123456"; // 默认密码，请修改！
 
 // 页面加载完成后执行
 $(function() {
+    // 读取本地存储的 VIP 过滤设置
+    var storedFilterVip = playerReaddata('filterVip');
+    if (storedFilterVip !== null && storedFilterVip !== undefined) {
+        mkPlayer.filterVip = storedFilterVip;
+    }
+    
+    // 读取本地存储的 自动跳过 VIP 歌曲设置
+    var storedSkipVip = playerReaddata('skipVip');
+    if (storedSkipVip !== null && storedSkipVip !== undefined) {
+        mkPlayer.skipVip = storedSkipVip;
+    }
+
+    // 读取本地存储的背景设置
+    var storedBgConfig = playerReaddata('bgConfig');
+    if (storedBgConfig !== null && storedBgConfig !== undefined) {
+        mkPlayer.bgConfig = storedBgConfig;
+    }
+
     // 检查是否需要密码验证
     if (localStorage.getItem('mkplayer_authenticated') === 'true') {
         $('#password-overlay').hide();

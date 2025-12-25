@@ -95,6 +95,10 @@ $(function(){
             case "collections":   // 我的收藏
                 loadCollections(); // 显示收藏列表
             break;
+
+            case "settings":   // 设置
+                settingsBox();
+            break;
         }
     });
 
@@ -439,6 +443,11 @@ $(function(){
                 endOpacity : 1 // 图像最终的不透明度
             });
         }
+        
+        // 初始化时如果启用了自定义背景，立即应用
+        if (mkPlayer.bgConfig && mkPlayer.bgConfig.type === 'custom' && mkPlayer.bgConfig.url) {
+             updateBackground(mkPlayer.bgConfig.url);
+        }
 
         $('.blur-mask').fadeIn(1000);   // 遮罩层淡出
     }
@@ -558,6 +567,156 @@ function musicInfo(list, index) {
         'url: ""');
         // 'url: "' + music.url + '"');
     }
+}
+
+// 展现设置弹窗
+function settingsBox() {
+    // 记录初始配置，用于取消时恢复
+    var initialBgConfig = $.extend({}, mkPlayer.bgConfig); // 深度拷贝
+    var isSaved = false; // 标记是否保存
+
+    layer.open({
+        type: 1,
+        title: '设置',
+        shade: [0.25,,'#000'],    // 遮罩颜色深度
+        shadeClose: true,
+        area: '360px',
+        content: $('#layer-settings-box').html(),
+        success: function(layero, index){
+            // 渲染 checkbox 状态
+            if (mkPlayer.filterVip) {
+                $(layero).find("input[name='filter-vip']").prop("checked", true);
+            } else {
+                $(layero).find("input[name='filter-vip']").prop("checked", false);
+            }
+            if (mkPlayer.skipVip) {
+                $(layero).find("input[name='skip-vip']").prop("checked", true);
+            } else {
+                $(layero).find("input[name='skip-vip']").prop("checked", false);
+            }
+
+            // 渲染背景设置状态
+            var bgType = (mkPlayer.bgConfig && mkPlayer.bgConfig.type) || 'default';
+            $(layero).find("input[name='bg-type'][value='" + bgType + "']").prop("checked", true);
+            
+            var bgUrl = (mkPlayer.bgConfig && mkPlayer.bgConfig.url) || '';
+            $(layero).find("input[name='bg-url']").val(bgUrl);
+            
+            if (bgType === 'custom') {
+                $(layero).find('#bg-custom-input-area').show();
+            }
+
+            form.render();
+            
+            // 监听背景模式切换
+            form.on('radio(bg-type)', function(data){
+                if(data.value === 'custom'){
+                    $(layero).find('#bg-custom-input-area').slideDown();
+                } else {
+                    $(layero).find('#bg-custom-input-area').slideUp();
+                }
+            });
+            
+            // 监听图片测试
+            $(layero).find('#test-bg-btn').click(function(){
+                var url = $(layero).find("input[name='bg-url']").val();
+                if(!url) {
+                    layer.msg('请输入图片URL');
+                    return;
+                }
+                
+                var loadIdx = layer.msg('正在测试图片...', {icon: 16, time: 0, shade: 0.01});
+                
+                var img = new Image();
+                img.onload = function(){
+                    layer.close(loadIdx);
+                    layer.msg('图片有效，已临时预览');
+                    // 预览图片，自定义图片默认不虚化
+                    updateBackground(url, false);
+                };
+                img.onerror = function(){
+                    layer.close(loadIdx);
+                    layer.msg('图片加载失败，请检查URL是否正确或允许跨域访问');
+                };
+                img.src = url;
+            });
+
+            // 监听提交
+            form.on('submit(settings-submit)', function(data){
+                // 获取开关状态
+                var isFilterVip = $(layero).find("input[name='filter-vip']").prop("checked");
+                var isSkipVip = $(layero).find("input[name='skip-vip']").prop("checked");
+                
+                // 获取背景设置
+                var newBgType = $(layero).find("input[name='bg-type']:checked").val();
+                var newBgUrl = $(layero).find("input[name='bg-url']").val();
+                
+                // 如果选择了自定义但没有URL，提示错误
+                if (newBgType === 'custom' && !newBgUrl) {
+                    layer.msg('请填写自定义图片URL');
+                    return false;
+                }
+                
+                // 更新全局配置
+                mkPlayer.filterVip = isFilterVip;
+                mkPlayer.skipVip = isSkipVip;
+                
+                mkPlayer.bgConfig = {
+                    type: newBgType,
+                    url: newBgUrl
+                };
+                
+                // 保存到本地存储
+                playerSavedata('filterVip', mkPlayer.filterVip);
+                playerSavedata('skipVip', mkPlayer.skipVip);
+                playerSavedata('bgConfig', mkPlayer.bgConfig);
+                
+                // 应用背景更改
+                if (newBgType === 'custom') {
+                    updateBackground(newBgUrl, false); // 自定义不虚化
+                } else {
+                    // 如果切回默认，且当前有播放歌曲，则恢复歌曲封面
+                    if (rem.playlist !== undefined && rem.playid !== undefined) {
+                         var currentMusic = musicList[rem.playlist].item[rem.playid];
+                         if (currentMusic && currentMusic.pic) {
+                             updateBackground(currentMusic.pic, true); // 默认虚化
+                         } else {
+                             // 没封面就默认图
+                             updateBackground("images/player_cover.png", true);
+                         }
+                    } else {
+                        // 没播放歌曲就默认图
+                        updateBackground("images/player_cover.png", true);
+                    }
+                }
+                
+                isSaved = true; // 标记已保存
+                layer.msg('设置已保存');
+                layer.closeAll('page');
+                return false; // 阻止表单跳转
+            });
+        },
+        end: function() {
+            // 如果未保存，则恢复之前的背景设置
+            if (!isSaved) {
+                if (initialBgConfig.type === 'custom' && initialBgConfig.url) {
+                    updateBackground(initialBgConfig.url, false);
+                } else {
+                    // 恢复默认背景
+                    if (rem.playlist !== undefined && rem.playid !== undefined && musicList[rem.playlist] && musicList[rem.playlist].item) {
+                         var currentMusic = musicList[rem.playlist].item[rem.playid];
+                         if (currentMusic && currentMusic.pic) {
+                             updateBackground(currentMusic.pic, true);
+                         } else {
+                             updateBackground("images/player_cover.png", true);
+                         }
+                    } else {
+                        updateBackground("images/player_cover.png", true);
+                    }
+                }
+            }
+        }
+    });
 }
 
 // 展现搜索弹窗
@@ -830,6 +989,55 @@ function ajaxShare(music) {
     });
 }
 
+// 改变背景图像
+// 参数：图像地址
+// 参数：是否模糊（可选，默认 true）
+function updateBackground(url, enableBlur) {
+    if (!url) return;
+    
+    if (enableBlur === undefined) {
+        enableBlur = true;
+    }
+    
+    // 移动端背景
+    if (rem.isMobile) {
+        $("#mobile-blur").css('background-image', 'url("' + url + '")');
+        // 移动端如果需要去模糊，可能需要修改 css class，暂时保持原样或后续优化
+    } else {
+        // PC端背景
+        if (!enableBlur) {
+            // 自定义模式，不模糊 -> 使用 CSS 背景
+            $("#blur-img").empty(); // 清除插件可能生成的元素
+            $("#blur-img").css({
+                'background-image': 'url("' + url + '")',
+                'background-position': 'center center',
+                'background-repeat': 'no-repeat',
+                'background-size': 'cover',
+                'opacity': 1
+            });
+            
+            // 手动添加遮罩层，保持视觉一致性
+            // 检查是否存在遮罩层，不存在则添加
+            if ($("#blur-img .blur-mask").length === 0) {
+                $("#blur-img").append('<div class="blur-mask"></div>');
+            }
+            $("#blur-img .blur-mask").show();
+            
+        } else {
+            // 默认模式，模糊 -> 使用插件
+            $("#blur-img").css('background-image', ''); // 清除 CSS 背景
+            $("#blur-img").backgroundBlur(url);
+            $("#blur-img").animate({opacity:"1"}, 2000); 
+            
+            // 插件会重新生成结构，我们需要确保遮罩层显示
+            // 使用 setTimeout 确保插件生成完毕后再操作，虽然 backgroundBlur 是同步的，但保险起见
+            // 另外 backgroundBlur 插件的 overlayClass 参数会自动创建带该 class 的 div
+            // 只需要确保它是可见的
+            $('.blur-mask').fadeIn(1000);
+        }
+    }
+}
+
 // 改变右侧封面图像
 // 新的图像地址
 function changeCover(music) {
@@ -844,33 +1052,36 @@ function changeCover(music) {
     if(img == "err") {
         img = "images/player_cover.png";
     } else {
-        if(mkPlayer.mcoverbg === true && rem.isMobile)      // 移动端封面
-        {
-            $("#music-cover").load(function(){
-                $("#mobile-blur").css('background-image', 'url("' + img + '")');
-            });
-        }
-        else if(mkPlayer.coverbg === true && !rem.isMobile)     // PC端封面
-        {
-            $("#music-cover").load(function(){
-                if(animate) {   // 渐变动画也已完成
-                    $("#blur-img").backgroundBlur(img);    // 替换图像并淡出
-                    $("#blur-img").animate({opacity:"1"}, 2000); // 背景更换特效
-                } else {
-                    imgload = true;     // 告诉下面的函数，图片已准备好
-                }
-
-            });
-
-            // 渐变动画
-            $("#blur-img").animate({opacity: "0.2"}, 1000, function(){
-                if(imgload) {   // 如果图片已经加载好了
-                    $("#blur-img").backgroundBlur(img);    // 替换图像并淡出
-                    $("#blur-img").animate({opacity:"1"}, 2000); // 背景更换特效
-                } else {
-                    animate = true;     // 等待图像加载完
-                }
-            });
+        // 只有在默认模式下才更新大背景
+        if (!mkPlayer.bgConfig || mkPlayer.bgConfig.type !== 'custom') {
+            if(mkPlayer.mcoverbg === true && rem.isMobile)      // 移动端封面
+            {
+                $("#music-cover").load(function(){
+                    $("#mobile-blur").css('background-image', 'url("' + img + '")');
+                });
+            }
+            else if(mkPlayer.coverbg === true && !rem.isMobile)     // PC端封面
+            {
+                $("#music-cover").load(function(){
+                    if(animate) {   // 渐变动画也已完成
+                        // 默认模式下启用模糊
+                        updateBackground(img, true);
+                    } else {
+                        imgload = true;     // 告诉下面的函数，图片已准备好
+                    }
+    
+                });
+    
+                // 渐变动画
+                $("#blur-img").animate({opacity: "0.2"}, 1000, function(){
+                    if(imgload) {   // 如果图片已经加载好了
+                        // 默认模式下启用模糊
+                        updateBackground(img, true);
+                    } else {
+                        animate = true;     // 等待图像加载完
+                    }
+                });
+            }
         }
     }
 

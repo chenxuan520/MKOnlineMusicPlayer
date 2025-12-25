@@ -19,7 +19,7 @@ function ajaxSearch() {
     $.ajax({
         type: mkPlayer.method, 
         url: mkPlayer.api, 
-        data: "types=search&count=" + mkPlayer.loadcount + "&source=" + rem.source + "&pages=" + rem.loadPage + "&name=" + rem.wd,
+        data: "types=search&count=" + mkPlayer.loadcount + "&source=" + rem.source + "&pages=" + rem.loadPage + "&name=" + rem.wd + "&filter_vip=" + mkPlayer.filterVip,
         dataType: mkPlayer.dataType,
         complete: function(XMLHttpRequest, textStatus) {
             if(tmpLoading) layer.close(tmpLoading);    // 关闭加载中动画

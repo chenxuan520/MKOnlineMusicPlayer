@@ -169,6 +169,21 @@ MxuePlay是MKOnlineMusicPlayer的优化版，MKOnlineMusicPlayer 是一款开源
 5.  **配置 `api.php`**: 确保 `api.php` 文件中的缓存和下载路径配置正确。
 6.  **访问应用**: 通过您配置的域名或 IP 地址访问应用。
 
+#### 使用 PHP 内置服务器部署 (Mac/Linux 快速启动)
+如果您不想安装 Docker 或配置 Apache，可以使用 PHP 内置服务器快速启动。
+
+1.  **安装 PHP**: 确保您的系统已安装 PHP (版本 5.4+)。Mac 用户推荐使用 Homebrew 安装：`brew install php`。
+2.  **准备目录**: 在项目根目录下执行以下命令设置权限：
+    ```bash
+    mkdir -p collections
+    chmod -R 777 collections
+    ```
+3.  **启动服务**:
+    ```bash
+    php -S 127.0.0.1:4000
+    ```
+4.  **访问应用**: 打开浏览器访问 `http://127.0.0.1:4000`。
+
 ### 注意事项
 -----
 #### Docker

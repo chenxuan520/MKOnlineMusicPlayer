@@ -155,10 +155,11 @@ switch($types)   // 根据请求的 Api，执行相应操作
         $s = getParam('name');  // 歌名
         $limit = getParam('count', 20);  // 每页显示数量
         $pages = getParam('pages', 1);  // 页码
+        $filter_vip = getParam('filter_vip', 'true'); // 是否过滤 VIP 歌曲，默认过滤
 
         if(defined('CACHE_PATH')) {
             $cache = CACHE_PATH.$source.'_'.$types.'_'.md5($s).'_'.$pages.'_'.$limit.'.json';
-
+            
             if(file_exists($cache)) {   // 缓存存在，则读取缓存
                 $data = file_get_contents($cache);
             } else {
@@ -180,28 +181,30 @@ switch($types)   // 根据请求的 Api，执行相应操作
         }
 
         // 根据付费标识过滤歌曲
-        $song_list = json_decode($data, true);
-        if (is_array($song_list)) {
-            $filtered_list = array_values(array_filter($song_list, function($song) {
-                if (isset($song['source'])) {
-                    switch ($song['source']) {
-                        case 'netease':
-                            // fee=1 是 VIP, fee=4 是付费专辑.
-                            return isset($song['fee']) && $song['fee'] != 1 && $song['fee'] != 4;
-                        case 'tencent':
-                            // pay.pay_play=1 表示需要付费
-                            return !(isset($song['pay']['pay_play']) && $song['pay']['pay_play'] == 1);
-                        case 'kugou':
-                            // privilege=0 是可播放
-                            return !isset($song['privilege']) || $song['privilege'] == 0;
-                        default:
-                            // 对于其他未知来源，暂时默认放行
-                            return true;
+        if ($filter_vip === 'true') {
+            $song_list = json_decode($data, true);
+            if (is_array($song_list)) {
+                $filtered_list = array_values(array_filter($song_list, function($song) {
+                    if (isset($song['source'])) {
+                        switch ($song['source']) {
+                            case 'netease':
+                                // fee=1 是 VIP, fee=4 是付费专辑.
+                                return isset($song['fee']) && $song['fee'] != 1 && $song['fee'] != 4;
+                            case 'tencent':
+                                // pay.pay_play=1 表示需要付费
+                                return !(isset($song['pay']['pay_play']) && $song['pay']['pay_play'] == 1);
+                            case 'kugou':
+                                // privilege=0 是可播放
+                                return !isset($song['privilege']) || $song['privilege'] == 0;
+                            default:
+                                // 对于其他未知来源，暂时默认放行
+                                return true;
+                        }
                     }
-                }
-                return true;
-            }));
-            $data = json_encode($filtered_list);
+                    return true;
+                }));
+                $data = json_encode($filtered_list);
+            }
         }
 
         echojson($data);

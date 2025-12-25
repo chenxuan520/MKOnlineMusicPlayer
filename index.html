@@ -57,6 +57,22 @@
             font-size: 13px;
             list-style: decimal;
         }
+        /* 覆盖 .btn 样式以显示纯图标 */
+        .btn.btn-settings {
+            border: none !important;
+            background: none !important;
+            padding: 0 10px !important;
+            font-size: 22px !important;
+            margin: 0 !important;
+            line-height: 34px !important;
+            vertical-align: sub;
+            top: 2px;
+        }
+        .btn.btn-settings:hover {
+            border: none !important;
+            opacity: 0.8 !important;
+            filter: alpha(opacity=80) !important;
+        }
     </style>
 </head>
 <body>
@@ -96,6 +112,7 @@
                 <span class="btn" data-action="sheet" title="音乐播放列表">播放列表</span>
                 <span class="btn" data-action="search" title="点击搜索音乐">歌曲搜索</span>
                 <span class="btn" data-action="collections" title="我的收藏">我的收藏</span>
+                <span class="btn btn-settings" data-action="settings" title="设置"><i class="layui-icon layui-icon-set"></i></span>
             </div>
         </div>  <!--class="btn-bar"-->
 
@@ -220,6 +237,57 @@
         <li>移动端（手机、平板用户）请双击播放，第一次点击是加载，第二点击是播放，为防止误操作。</li>
         <!-- <li>有事可以联系站长QQ&nbsp;<a href="https://wpa.qq.com/msgrd?v=3&uin=2578096874&site=qq&menu=yes" target="_blank" style="color: #72ACE3">2578096874</a>，不经常在线，有事请留言。</li> -->
     </ul>
+</script>
+
+<!-- 设置弹窗 -->
+<script type="text/html" id="layer-settings-box">
+    <div id="layer-settings-content" style="padding: 20px;">
+        <form class="layui-form" action="">
+            <fieldset class="layui-elem-field layui-field-title" style="margin-top: 0;">
+                <legend style="font-size: 14px;">VIP歌曲设置</legend>
+            </fieldset>
+            <div class="layui-form-item">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label class="layui-form-label" style="float: none; padding: 9px 0; text-align: left; width: auto;">搜索过滤VIP歌曲</label>
+                    <div class="layui-input-block" style="margin-left: 0; min-height: auto;">
+                        <input type="checkbox" name="filter-vip" lay-skin="switch" lay-text="ON|OFF">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label class="layui-form-label" style="float: none; padding: 9px 0; text-align: left; width: auto;">播放自动跳过VIP歌曲</label>
+                    <div class="layui-input-block" style="margin-left: 0; min-height: auto;">
+                        <input type="checkbox" name="skip-vip" lay-skin="switch" lay-text="ON|OFF">
+                    </div>
+                </div>
+            </div>
+            
+            <fieldset class="layui-elem-field layui-field-title" style="margin-top: 20px;">
+                <legend style="font-size: 14px;">背景设置</legend>
+            </fieldset>
+            
+            <div class="layui-form-item">
+                <div class="layui-input-block" style="margin-left: 0;">
+                    <input type="radio" name="bg-type" value="default" title="专辑封面" lay-filter="bg-type">
+                    <input type="radio" name="bg-type" value="custom" title="自定义图片" lay-filter="bg-type">
+                </div>
+            </div>
+            
+            <div class="layui-form-item" id="bg-custom-input-area" style="display: none;">
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" name="bg-url" placeholder="请输入图片URL" autocomplete="off" class="layui-input">
+                    <button type="button" class="layui-btn layui-btn-normal" id="test-bg-btn">测试</button>
+                </div>
+                <div class="layui-form-mid layui-word-aux" style="float: none; font-size: 12px;">测试通过后方可保存生效</div>
+            </div>
+
+            <div class="layui-form-item" style="text-align: center; margin-top: 30px;">
+                <button class="layui-btn" lay-submit lay-filter="settings-submit">保存设置</button>
+                <button type="button" class="layui-btn layui-btn-primary" onclick="layer.closeAll('page')">取消</button>
+            </div>
+        </form>
+    </div>
 </script>
 
 <!-- 评论弹窗 -->
