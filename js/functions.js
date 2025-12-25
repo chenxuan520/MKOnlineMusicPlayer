@@ -89,6 +89,10 @@ $(function(){
             break;
 
             case "sheet":   // 播放列表
+                // 如果启用了懒加载且尚未加载列表，则先加载
+                if(!rem.sheetLoaded) {
+                   rem.initSheetList();
+                }
                 dataBox("sheet");    // 在主界面显示出音乐专辑
             break;
 
@@ -584,6 +588,12 @@ function settingsBox() {
         content: $('#layer-settings-box').html(),
         success: function(layero, index){
             // 渲染 checkbox 状态
+            if (mkPlayer.autoLoad) {
+                $(layero).find("input[name='auto-load']").prop("checked", true);
+            } else {
+                $(layero).find("input[name='auto-load']").prop("checked", false);
+            }
+
             if (mkPlayer.filterVip) {
                 $(layero).find("input[name='filter-vip']").prop("checked", true);
             } else {
@@ -644,6 +654,7 @@ function settingsBox() {
             // 监听提交
             form.on('submit(settings-submit)', function(data){
                 // 获取开关状态
+                var isAutoLoad = $(layero).find("input[name='auto-load']").prop("checked");
                 var isFilterVip = $(layero).find("input[name='filter-vip']").prop("checked");
                 var isSkipVip = $(layero).find("input[name='skip-vip']").prop("checked");
                 
@@ -658,6 +669,7 @@ function settingsBox() {
                 }
                 
                 // 更新全局配置
+                mkPlayer.autoLoad = isAutoLoad;
                 mkPlayer.filterVip = isFilterVip;
                 mkPlayer.skipVip = isSkipVip;
                 
@@ -667,6 +679,7 @@ function settingsBox() {
                 };
                 
                 // 保存到本地存储
+                playerSavedata('autoLoad', mkPlayer.autoLoad);
                 playerSavedata('filterVip', mkPlayer.filterVip);
                 playerSavedata('skipVip', mkPlayer.skipVip);
                 playerSavedata('bgConfig', mkPlayer.bgConfig);
@@ -1634,32 +1647,65 @@ function initList() {
     if(playerReaddata('uid')) {
         rem.uid = playerReaddata('uid');
         rem.uname = playerReaddata('uname');
-        // musicList.push(playerReaddata('ulist'));
         var tmp_ulist = playerReaddata('ulist');    // 读取本地记录的用户歌单
 
         if(tmp_ulist) musicList.push.apply(musicList, tmp_ulist);   // 追加到系统歌单的后面
     }
 
-    // 显示所有的歌单
+    // 恢复本地存储的播放列表和历史记录（不涉及UI渲染）
     for(var i=1; i<musicList.length; i++) {
-
         if(i == 1) {    // 正在播放列表
-            // 读取正在播放列表
             var tmp_item = playerReaddata('playing');
-            if(tmp_item) {  // 读取到了正在播放列表
+            if(tmp_item) {
                 musicList[1].item = tmp_item;
-                mkPlayer.defaultlist = 1;   // 默认显示正在播放列表
+                mkPlayer.defaultlist = 1;
             }
-
         } else if(i == 2) { // 历史记录列表
-            // 读取历史记录
             var tmp_item = playerReaddata('his');
             if(tmp_item) {
                 musicList[2].item = tmp_item;
             }
+        }
+    }
 
-         // 列表不是用户列表，并且信息为空，需要ajax读取列表
-        }else if(!musicList[i].creatorID && (musicList[i].item == undefined || (i>2 && musicList[i].item.length == 0))) {
+    // 首页显示默认列表
+    if(mkPlayer.defaultlist >= musicList.length) mkPlayer.defaultlist = 1;  // 超出范围，显示正在播放列表
+
+    // 始终渲染 "正在播放" 和 "历史记录" 列表
+    for(var i=1; i<=2 && i<musicList.length; i++) {
+        addSheet(i, musicList[i].name, musicList[i].cover);
+    }
+
+    if (mkPlayer.autoLoad) {
+        rem.initSheetList(); // 渲染其余歌单列表
+        if(musicList[mkPlayer.defaultlist].isloading !== true) loadList(mkPlayer.defaultlist);
+        rem.sheetLoaded = true;
+    } else {
+        rem.sheetLoaded = false;
+        // 如果不自动加载，侧边栏只有 正在播放 和 历史记录。
+        
+        // 但我们仍然需要添加登陆条，因为它位于列表底部
+        sheetBar();
+        
+        // 确保加载当前默认列表的内容（通常是正在播放）
+        mkPlayer.defaultlist = 1; // 强制默认为正在播放列表
+        loadList(mkPlayer.defaultlist);
+    }
+}
+
+// 渲染歌单列表（核心逻辑提取）
+rem.initSheetList = function() {
+    if(rem.sheetLoaded) return; // 避免重复加载
+
+    // 移除已有的登陆条（如果有）
+    $(".login-bar").remove();
+
+    // 显示所有的歌单（从系统歌单开始）
+    for(var i=3; i<musicList.length; i++) {
+        if (!musicList[i]) continue;
+
+        // 列表不是用户列表，并且信息为空，需要ajax读取列表
+        if(!musicList[i].creatorID && (musicList[i].item == undefined || (i>2 && musicList[i].item.length == 0))) {
             musicList[i].item = [];
             if(musicList[i].id) {   // 列表ID已定义
                 // ajax获取列表信息
@@ -1672,21 +1718,17 @@ function initList() {
         // 在前端显示出来
         addSheet(i, musicList[i].name, musicList[i].cover);
     }
-
+    
     // 登陆了，但歌单又没有，说明是在刷新歌单
+    // 注意：这里可能需要检查是否已经加载过用户歌单
+    var tmp_ulist = playerReaddata('ulist');
     if(playerReaddata('uid') && !tmp_ulist) {
         ajaxUserList(rem.uid);
-        return true;
     }
 
-    // 首页显示默认列表
-    if(mkPlayer.defaultlist >= musicList.length) mkPlayer.defaultlist = 1;  // 超出范围，显示正在播放列表
-
-    if(musicList[mkPlayer.defaultlist].isloading !== true)  loadList(mkPlayer.defaultlist);
-
-    // 显示最后一项登陆条
-    sheetBar();
-}
+    sheetBar(); // 显示登陆条
+    rem.sheetLoaded = true;
+};
 
 // 清空用户的同步列表
 function clearUserlist() {

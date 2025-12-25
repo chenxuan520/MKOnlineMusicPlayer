@@ -24,6 +24,7 @@ var mkPlayer = {
     tempPath: "temp/", // 临时文件目录
     filterVip: true, // 默认开启 VIP 过滤
     skipVip: true, // 默认开启自动跳过 VIP 歌曲 (短歌曲)
+    autoLoad: true, // 默认开启自动加载列表
     bgConfig: { type: 'default', url: '' } // 背景设置配置
 };
 
@@ -42,6 +43,12 @@ $(function() {
     var storedSkipVip = playerReaddata('skipVip');
     if (storedSkipVip !== null && storedSkipVip !== undefined) {
         mkPlayer.skipVip = storedSkipVip;
+    }
+
+    // 读取本地存储的 自动加载列表设置
+    var storedAutoLoad = playerReaddata('autoLoad');
+    if (storedAutoLoad !== null && storedAutoLoad !== undefined) {
+        mkPlayer.autoLoad = storedAutoLoad;
     }
 
     // 读取本地存储的背景设置
@@ -486,7 +493,7 @@ function play(music) {
 
         // 监听 canplaythrough 事件，确保获取到歌曲时长
         $(rem.audio[0]).one('canplaythrough', function() {
-            if (rem.audio[0].duration < 90) { // 如果歌曲时长短于1.5分钟 (90秒)
+            if (mkPlayer.skipVip && rem.audio[0].duration < 90) { // 如果开启了自动跳过，且歌曲时长短于1.5分钟 (90秒)
                 rem.audio[0].pause();
                 layer.msg('歌曲无法播放已自动跳过');
 
