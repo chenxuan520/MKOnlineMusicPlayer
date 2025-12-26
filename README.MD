@@ -1,444 +1,69 @@
-MxuePlay（原MKOnlineMusicPlayer）
+MKOnlineMusicPlayer（MxuePlay 优化版）
 ========
-MxuePlay是MKOnlineMusicPlayer的优化版，MKOnlineMusicPlayer 是一款开源的基于 `Meting` 的在线音乐播放器。具有音乐搜索、播放、下载、歌词同步显示、个人网易云音乐播放列表同步等功能。
+基于 `Meting` 的在线音乐播放器，支持搜索、播放、下载、歌词同步、收藏与播放历史，已集成“智能推荐歌单”。前端采用响应式设计，PC/移动端均可良好使用。
 
-前端界面参照 QQ 音乐网页版进行布局，同时采用了流行的响应式设计，无论是在PC端还是在手机端，均能给您带来原生 app 般的使用体验。
+> 本项目仅用于学习与交流，请勿用于商业用途或传播盗版资源。
 
-> 本项目仅为学习前端的练手之作，请勿用作商业用途，请勿通过本项目下载盗版歌曲资源，否则后果自负！
+### 快速开始
+- Docker 启动：在项目根目录执行 `docker-compose up -d`，默认访问 `http://localhost:4000`。
+- 手动启动：使用 Apache/PHP，或 `php -S 127.0.0.1:4000` 开启内置服务器。
+- 必要目录：确保 `collections/` 可写（收藏功能），`temp/` 可写（下载功能）。
 
 ### 界面欣赏
------
-![主界面(电脑端)](https://user-images.githubusercontent.com/35069089/52914931-e9655d00-3308-11e9-8347-a1f9be614e10.png)
-
-![歌曲播放(电脑端)](https://user-images.githubusercontent.com/35069089/52914962-2f222580-3309-11e9-87ce-5feb50697d69.png)
-
-![歌曲搜索(电脑端)](https://user-images.githubusercontent.com/35069089/52914970-42cd8c00-3309-11e9-9eb1-2cd3f6b7a242.png)
-
-![播放列表界面(电脑端)](https://user-images.githubusercontent.com/35069089/52914976-65f83b80-3309-11e9-97fc-b3409ccb2d09.png)
-
-![下载歌曲/歌词(电脑端)](https://user-images.githubusercontent.com/35069089/63268311-785a2e80-c2c6-11e9-858a-a5629d80731a.png)
-
+- 主界面(电脑端)：![主界面](https://user-images.githubusercontent.com/35069089/52914931-e9655d00-3308-11e9-8347-a1f9be614e10.png)
+- 歌曲播放(电脑端)：![歌曲播放](https://user-images.githubusercontent.com/35069089/52914962-2f222580-3309-11e9-87ce-5feb50697d69.png)
+- 歌曲搜索(电脑端)：![歌曲搜索](https://user-images.githubusercontent.com/35069089/52914970-42cd8c00-3309-11e9-9eb1-2cd3f6b7a242.png)
+- 播放列表界面(电脑端)：![播放列表](https://user-images.githubusercontent.com/35069089/52914976-65f83b80-3309-11e9-97fc-b3409ccb2d09.png)
+- 下载歌曲/歌词(电脑端)：![下载功能](https://user-images.githubusercontent.com/35069089/63268311-785a2e80-c2c6-11e9-858a-a5629d80731a.png)
 
 ### 相关链接
------
-**在线演示** [http://lab.mkblog.cn/music/](http://lab.mkblog.cn/music/)(原版)
-
-**在线演示** [https://music.itmxue.cn](https://music.itmxue.cn)(本人升级优化版)
-
-**详细介绍** [http://mkblog.cn/1060/](http://mkblog.cn/1060/)
-
-**GitHub** [https://github.com/mengkunsoft/MKOnlineMusicPlayer](https://github.com/mengkunsoft/MKOnlineMusicPlayer)(原版)
-
-**GitHub** [https://github.com/mxue12138/MKOnlineMusicPlayer](https://github.com/mxue12138/MKOnlineMusicPlayer)(本人升级优化版)
-
-### 本地部署
------
-本项目支持通过 Docker 或 Apache 进行本地部署。
-
-#### 使用 Docker 部署 (推荐)
-1.  **安装 Docker 和 Docker Compose**: 确保您的系统已安装 Docker 和 Docker Compose。您可以访问 [Docker 官方网站](https://docs.docker.com/get-docker/) 获取安装指南。
-2.  **克隆项目**:
-    ```bash
-    git clone https://github.com/mxue12138/MKOnlineMusicPlayer.git
-    cd MKOnlineMusicPlayer
-    ```
-3.  **启动服务**: 在项目根目录下执行以下命令启动服务：
-    ```bash
-    docker-compose up -d
-    ```
-    这将启动一个 Nginx 服务器和一个 PHP-FPM 服务。
-4.  **访问应用**: 默认情况下，应用将在 `http://localhost:4000` 运行。如果需要修改端口，请编辑 `docker-compose.yml` 文件中的 `ports` 配置，然后重新创建容器：
-    ```bash
-    docker-compose down && docker-compose up -d
-    ```
-
-#### 使用 Apache 部署
-1.  **安装 Apache 和 PHP**: 确保您的系统已安装 Apache Web 服务器和 PHP (版本 5.4+)。同时，确保 PHP 已启用 `curl_exec`, `file_get_contents`, `json_decode`, `openssl_encrypt` 等扩展。
-2.  **克隆项目**:
-    ```bash
-    git clone https://github.com/mxue12138/MKOnlineMusicPlayer.git
-    cd MKOnlineMusicPlayer
-    ```
-3.  **配置 Apache 虚拟主机**:
-    创建一个 Apache 虚拟主机配置文件 (例如 `mk_music_player.conf`)，并将其放置在 Apache 的配置目录中 (通常是 `/etc/apache2/sites-available/` 或 `/etc/httpd/conf.d/`)。将 `你的网站绝对路径` 替换为项目的实际路径。
-    ```apache
-    <VirtualHost *:80>
-        ServerAdmin webmaster@localhost
-        DocumentRoot "你的网站绝对路径"
-        <Directory "你的网站绝对路径">
-            Options Indexes FollowSymLinks
-            AllowOverride All
-            Require all granted
-        </Directory>
-
-        ErrorLog ${APACHE_LOG_DIR}/error.log
-        CustomLog ${APACHE_LOG_DIR}/access.log combined
-
-        # 必要配置：清除缓存
-        # 请务必添加以下代码到cron定时任务，并设置成每分钟执行一次，否则会导致用户歌单、歌曲列表、歌词等更新不及时
-        # find 你的网站绝对路径/cache/*.json -type f -cmin +30 -exec rm -fv {} \;
-
-        # 必要配置：下载歌曲
-        <Directory "你的网站绝对路径/temp/">
-            Header set Content-Type "application/octet-stream"
-            Header set Content-Disposition "attachment;"
-        </Directory>
-
-        # 跨域设置 (如果网站和接口不在一台服务器上)
-        # Header set Access-Control-Allow-Origin "*"
-        # Header set Access-Control-Allow-Headers "X-Requested-With"
-        # Header set Access-Control-Allow-Methods "GET,POST,OPTIONS"
-    </VirtualHost>
-    ```
-4.  **启用虚拟主机并重启 Apache**:
-    ```bash
-    sudo a2ensite mk_music_player.conf # 对于 Debian/Ubuntu
-    sudo systemctl restart apache2     # 对于 Debian/Ubuntu
-    # 或者
-    # sudo systemctl restart httpd     # 对于 CentOS/RHEL
-    ```
-5.  **配置 `api.php`**: 确保 `api.php` 文件中的缓存和下载路径配置正确。
-6.  **访问应用**: 通过您配置的域名或 IP 地址访问应用。
-
-### 本地部署
------
-本项目支持通过 Docker 或 Apache 进行本地部署。
-
-#### 使用 Docker 部署 (推荐)
-1.  **安装 Docker 和 Docker Compose**: 确保您的系统已安装 Docker 和 Docker Compose。您可以访问 [Docker 官方网站](https://docs.docker.com/get-docker/) 获取安装指南。
-2.  **克隆项目**:
-    ```bash
-    git clone https://github.com/mxue12138/MKOnlineMusicPlayer.git
-    cd MKOnlineMusicPlayer
-    ```
-3.  **启动服务**: 在项目根目录下执行以下命令启动服务：
-    ```bash
-    docker-compose up -d
-    ```
-    这将启动一个 Nginx 服务器和一个 PHP-FPM 服务。
-4.  **访问应用**: 默认情况下，应用将在 `http://localhost:4000` 运行。如果需要修改端口，请编辑 `docker-compose.yml` 文件中的 `ports` 配置，然后重新创建容器：
-    ```bash
-    docker-compose down && docker-compose up -d
-    ```
-
-#### 使用 Apache 部署
-1.  **安装 Apache 和 PHP**: 确保您的系统已安装 Apache Web 服务器和 PHP (版本 5.4+)。同时，确保 PHP 已启用 `curl_exec`, `file_get_contents`, `json_decode`, `openssl_encrypt` 等扩展。
-2.  **克隆项目**:
-    ```bash
-    git clone https://github.com/mxue12138/MKOnlineMusicPlayer.git
-    cd MKOnlineMusicPlayer
-    ```
-3.  **配置 Apache 虚拟主机**:
-    创建一个 Apache 虚拟主机配置文件 (例如 `mk_music_player.conf`)，并将其放置在 Apache 的配置目录中 (通常是 `/etc/apache2/sites-available/` 或 `/etc/httpd/conf.d/`)。将 `你的网站绝对路径` 替换为项目的实际路径。
-    ```apache
-    <VirtualHost *:80>
-        ServerAdmin webmaster@localhost
-        DocumentRoot "你的网站绝对路径"
-        <Directory "你的网站绝对路径">
-            Options Indexes FollowSymLinks
-            AllowOverride All
-            Require all granted
-        </Directory>
-
-        ErrorLog ${APACHE_LOG_DIR}/error.log
-        CustomLog ${APACHE_LOG_DIR}/access.log combined
-
-        # 必要配置：清除缓存
-        # 请务必添加以下代码到cron定时任务，并设置成每分钟执行一次，否则会导致用户歌单、歌曲列表、歌词等更新不及时
-        # find 你的网站绝对路径/cache/*.json -type f -cmin +30 -exec rm -fv {} \;
-
-        # 必要配置：下载歌曲
-        <Directory "你的网站绝对路径/temp/">
-            Header set Content-Type "application/octet-stream"
-            Header set Content-Disposition "attachment;"
-        </Directory>
-
-        # 跨域设置 (如果网站和接口不在一台服务器上)
-        # Header set Access-Control-Allow-Origin "*"
-        # Header set Access-Control-Allow-Headers "X-Requested-With"
-        # Header set Access-Control-Allow-Methods "GET,POST,OPTIONS"
-    </VirtualHost>
-    ```
-4.  **启用虚拟主机并重启 Apache**:
-    ```bash
-    sudo a2ensite mk_music_player.conf # 对于 Debian/Ubuntu
-    sudo systemctl restart apache2     # 对于 Debian/Ubuntu
-    # 或者
-    # sudo systemctl restart httpd     # 对于 CentOS/RHEL
-    ```
-5.  **配置 `api.php`**: 确保 `api.php` 文件中的缓存和下载路径配置正确。
-6.  **访问应用**: 通过您配置的域名或 IP 地址访问应用。
-
-#### 使用 PHP 内置服务器部署 (Mac/Linux 快速启动)
-如果您不想安装 Docker 或配置 Apache，可以使用 PHP 内置服务器快速启动。
-
-1.  **安装 PHP**: 确保您的系统已安装 PHP (版本 5.4+)。Mac 用户推荐使用 Homebrew 安装：`brew install php`。
-2.  **准备目录**: 在项目根目录下执行以下命令设置权限：
-    ```bash
-    mkdir -p collections
-    chmod -R 777 collections
-    ```
-3.  **启动服务**:
-    ```bash
-    php -S 127.0.0.1:4000
-    ```
-4.  **访问应用**: 打开浏览器访问 `http://127.0.0.1:4000`。
-
-### 注意事项
------
-#### Docker
-1. 使用 docker-compose 运行，请自行安装。首先下载代码，进入代码根目录后启动，启动命令为 ``docker-compose up -d``
-
-2. 默认端口是 4000，需要修改的话请修改 docker-compose.yml 文件，修改后需要删除容器重新创建，``docker-compose down && docker-compose up -d``
-3. docker-compose.yml 部分代码参考自 [#issuecomment-1976040416](https://github.com/mxue12138/MKOnlineMusicPlayer/issues/2#issuecomment-1976040416)
-
-#### 运行环境
-
-php 5.4+, curl_exec, file_get_contents, json_decode, openssl_encrypt
-
-#### 必要配置
-
-1. **[清除缓存]** 请务必添加以下代码到cron定时任务，并设置成每分钟执行一次，否则会导致用户歌单、歌曲列表、歌词等更新不及时，宝塔用户可以直接设置“计划任务”并选择“Shell脚本”
-
-   ``find 你的网站绝对路径/cache/*.json -type f -cmin +30 -exec rm -fv {} \;``
-
-   如果是虚拟主机没办法添加Shell脚本的话，可以使用网站监控，监控“你的域名/api.php?types=cache”，监控时间推荐一分钟。
-
-   如果以上都不行的话，可以直接关闭 api.php 内的缓存(关闭缓存可能会导致偶尔无法获取音乐)。
-
-2. **[下载歌曲]** 添加以下代码到你的网站配置文件，推荐添加到php引用之前，否则可能导致恶意php被执行(不添加会导致网站异常、歌曲无法下载等)
-
-   apache：
-
-   ```
-   <Directory "你的网站绝对路径/temp/">
-       Header set Content-Type "application/octet-stream"
-       Header set Content-Disposition "attachment;"
-   </Directory>
-   ```
-
-   nginx：
-
-   ```
-   location ~/temp/ {
-       add_header Content-Type "application/octet-stream";
-       add_header Content-Disposition "attachment;";
-   }
-   ```
-
-3. **[跨域设置]** 如果网站和接口不在一台服务器上，请将上面的代码添加到接口所在的服务器，并且还需要在接口所在的服务器的网站配置添加以下代码以解决跨域问题
-
-   apache：
-
-   ```
-   Header set Access-Control-Allow-Origin "*"
-   Header set Access-Control-Allow-Headers "X-Requested-With"
-   Header set Access-Control-Allow-Methods "GET,POST,OPTIONS"
-   ```
-
-   nginx：
-
-   ```
-   add_header Access-Control-Allow-Origin *;
-   add_header Access-Control-Allow-Headers X-Requested-With;
-   add_header Access-Control-Allow-Methods GET,POST,OPTIONS;
-   ```
-
-#### 兼容性
-本播放器设计支持 IE9及以上的现代浏览器。并且已在 Chrome、firefox、IE11 等浏览器测试使用正常。
-
-#### 版权
-本播放器由 [mengkun(https://mkblog.cn)](https://mkblog.cn) 开发，**2.42版本及以后由本人修改优化**，您可以随意修改、使用、转载。
-
-#### 歌曲
-播放器中的歌曲来自各大音乐平台，歌曲版权归各大平台享有。请支持正版音乐。
-
-### 常见问题
------
-[请前往原作者 wiki 查阅](https://github.com/mengkunsoft/MKOnlineMusicPlayer/wiki)
-
-### 开发计划
------
-- 歌曲音质切换功能
-- IOS 歌曲播放问题
-- 各大网站评论获取(已开始开发)
-- 多用户管理系统
-
-### 更新日志
------
-#### v2.44 `2019/2/16`
-- 现已添加网易云、酷狗、腾讯热评接口，后续添加其他渠道接口
-- 优化移动端判断代码
-- 优化IE兼容性
-- 优化后端缓存机制
-
-#### v2.43 `2019/1/15`
-- 美化歌曲搜索框
-
-#### v2.42 `2019/1/13`
-- 添加歌曲播放进度
-- 删除无效的百度音乐
-- 添加歌词下载、封面下载等
-- 添加缓存用户歌单机制
-- 升级 Meting.php
-- 优化缓存机制，添加定时任务
-
-#### v2.41 `2018/3/13`
-- 修复 IE 下播放键错位的 BUG
-- 修改默认背景为黑色
-- 其它一些细节优化
-
-#### v2.4 `2018/3/11`
-- 修复网易云音乐无法播放
-- 增加标题栏滚动效果(感谢@lzcykevin)
-- 增加歌曲循环播放控制(感谢@yuxizhe)
-- 修复百度音乐无法播放
-- 优化连续播放失败的歌曲过多时，自动终止播放。防止卡死
-- 压缩图片素材，限制封面图片尺寸，优化页面加载速度
-
-#### v2.32 `2017/9/15`
-- 修复播放历史记录歌曲时播放失败的 BUG
-- 新增播放歌曲时浏览器标题栏显示相关信息
-- 一些细节的完善
-
-#### v2.31 `2017/9/13`
-- 优化下载功能，支持直接弹出下载
-- 下载或分享无版权音乐时给出提示
-- 再次降低移动端背景特效内存占用
-- 修复某些手机浏览器列表页右侧菜单按钮下移 BUG
-- 升级 Meting 至最新版本
-
-#### v2.3 `2017/9/9`
-- 全面支持网易云、QQ、虾米、酷狗、百度音乐源切换
-- 移动端歌曲列表支持直接分享、下载歌曲
-- 降低内存占用，解决移动端背景特效卡顿问题
-- 新增对 https 的支持(酷狗、百度音乐源除外)
-- 新增运行环境自检功能
-- 优化中等屏幕下显示效果
-- 修复长歌词定位错乱的 BUG
-- 修复无法获取自定义专辑封面的 BUG
-- 修复移动端无法自动播放下一曲的 BUG
-- 修复切换播放列表后滚动条未归位的 BUG
-- 修复某些情况下歌词与歌曲不对应的 BUG
-- 修复中小屏幕下顶部 tab 激活错乱的 BUG
-- 修复搜索分页的 BUG
-- 去除超时检测
-
-#### v2.21 `2017/5/19`
-- 临时修复 API 失效问题
-- 新增歌曲超时检测，播放超时则自动播放下一首
-- 新增设置数据传输方式(GET/POST)
-- (这是一个临时版本，虽然解决了一部分API失效的问题，但是还是存在一些问题。剩下的问题将在之后的 v2.3 正式版中解决)
-
-#### v2.2 `2017/3/26`
-- 用户歌单获取时新增加载中动画及遮罩，防止重复加载
-- 修复中等屏幕下鼠标滑过tab边框消失的 BUG
-- 修复某些情况下第一句歌词无法渲染的 BUG
-- 修复在IE9下音乐无法播放的 BUG
-- 更换背景展现方式，整体界面更美观
-- 正在播放和播放历史列表支持一键清空
-- 新增图片加载失败时替换处理
-- 新增小屏幕下为当前显示的tab添加下划线
-- 新增favicon小图标
-- 新增歌曲播放时进度条小点闪烁效果
-- 优化后台数据获取失败时弹出提示
-- 其它的一些细节优化
-
-#### v2.1 `2017/3/20`
-- 紧急修复部分浏览器下切换歌曲造成无限播放失败循环的 BUG
-- 新增点击未加载完的播放列表弹出提示
-- 新增搜索时弹出加载中动画
-- 切换歌曲后进度条自动复位
-- 优化歌曲外链显示方式，方便复制
-- 优化封面图像加载大小
-- 新增无歌词、歌词加载中提示
-- 优化歌词展现方式
-
-#### v2.0 Beta `2017/3/18`
-- 所有代码均推翻重写，前端界面全新改版
-- 完善对手机端的适配，新支持 IE9~IE11 浏览器
-- 修复 IE11 下点击下载歌曲名字乱码的 BUG
-- 新增“正在播放”、“播放历史”列表功能
-- 新增后台自定义播放列表功能，支持多种列表定义模式
-- 新增本地记录用户设置及播放列表功能
-- 进度条支持响应点击事件
-
-#### v1.3 `未发布`
-- 新增同步用户歌单功能
-- 修复一些已知 BUG
-(因逻辑过于混乱，代码过于庞杂，此版本废弃)
-
-#### v1.2 `未发布`
-- 这个版本的存档神秘失踪，我也不记得有哪些改变。。
-
-#### v1.1 `2016/10/27`
-- 修复宽屏下背景覆盖缺失的 BUG
-- 修复打开页面后直接点击播放无效的 BUG
-- 修复EDGE浏览器点击下载时文件名为乱码的 BUG
-- 优化播放已下架的音乐，会给出无法播放的提示
-- 修复歌词获取失败时无法清除原有歌词的 BUG
-- 暂停播放时停止歌词滚动，方便复制歌词
-- 优化搜索内容为空时弹出提示
-
-#### v1.0 `2016/10/25`
-- 完成搜索并播放音乐功能
-- 完成一键提取音乐外链功能
-- 完成音乐下载功能
-- 完成显示歌曲封面、歌词功能
-
-
-### 开发文档[待完善]
------
-#### 播放列表DIY教程
-本播放器支持后台自定义播放列表。打开 `js/musicList.js`，按照里面的说明对应修改即可。
-
-#### 播放器DIY教程
-除了自定义播放列表，本播放器还支持一些 DIY 设定，比如修改 api.php 文件的默认路径、修改搜索框的默认搜索内容等。具体请打开 `js/player.js` 查看
-
-#### 密码设置
-为了保护您的音乐播放器，我们添加了密码功能。默认密码为 `mkplayer`。
-
-**如何修改密码：**
-1. 打开 `js/player.js` 文件。
-2. 找到以下代码行：
-   ```javascript
-   const PASSWORD = "mkplayer"; // 默认密码，请修改！
-   ```
-3. 将 `"mkplayer"` 替换为您想要设置的新密码。
-4. 保存文件。
-
-**注意：** 密码直接硬编码在 `js/player.js` 文件中，请确保您了解其安全性影响。
-
-#### rem 变量表
-程序中的rem数组用于存储全局变量，具体的成员(部分)及作用见下表：
-
-| 变量名    | 用途   |
-| ----------- | ----------- |
-| rem.audio | audio dom |
-| rem.playlist | 当前正在播放的播放列表编号 |
-| rem.playid | 正在播放的这首歌在播放列表中的编号 |
-| rem.dislist | 当前显示的列表的列表编号 |
-| rem.loadPage | 搜索功能已加载的页码 |
-| rem.wd | 当前的搜索词 |
-| rem.source | 当前选定的音乐源 |
-| rem.uid | 当前已同步的用户的网易云 ID |
-| rem.uname | 已登录用户的用户名 |
-| rem.sheetList | 歌单容器操作对象 |
-| rem.mainList | 歌曲列表容器操作对象 |
-| rem.isMobile | 是否是手机浏览 |
-| rem.commentsTime | 当前歌曲热评的定时器 |
-| rem.comments | 当前歌曲的热评 |
-
-### 致谢
------
-#### 特别感谢 `@metowolf`、`网易云音乐`、`QQ音乐`、`虾米`、`酷狗`、`百度音乐`
-
-#### 采用的开源模块
-- **Jquery**：js主流开发框架 [http://jquery.com/](http://jquery.com/)
-- **Meting**：一个高效的多平台音乐 API 框架 [https://github.com/metowolf/Meting](https://github.com/metowolf/Meting)
-- **layui**：一款模块化前端框架[https://www.layui.com/](https://www.layui.com/)
-- **mCustomScrollbar**：jQuery自定义滚动条样式插件 [http://manos.malihu.gr/jquery-custom-content-scroller/](http://manos.malihu.gr/jquery-custom-content-scroller/)
-- **background-blur**：跨浏览器磨砂效果背景图片模糊特效插件 [https://msurguy.github.io/background-blur/](https://msurguy.github.io/background-blur/)
-- **Let's Kill IE6**：消灭IE [http://overtrue.me](http://overtrue.me)
-
-##### 在开发过程中，还参照了很多开源 html 播放器的相关代码，在此一并向他们表示感谢！
+- 原版在线演示：<http://lab.mkblog.cn/music/>
+- 原版介绍：<http://mkblog.cn/1060/>
+- 原版仓库：<https://github.com/mengkunsoft/MKOnlineMusicPlayer>
+- 优化版仓库：<https://github.com/chenxuan520/MKOnlineMusicPlayer>
+
+### 智能推荐服务
+- 推荐引擎仓库：`https://github.com/chenxuan520/recommend_engine`。
+- 默认端口：`8080`。
+- 前端调用接口（同域名下）：
+  - `POST /api/v1/recommend/music?async=true`（提交喜好，返回 `task_id`）
+  - `GET  /api/v1/recommend/result/{task_id}`（轮询任务结果）
+- Token：必填。可在播放器设置里填写；域名未填写时默认回落为当前页面域名（自动带 `http/https`）。逻辑位置：`js/ajax.js:403`、`js/ajax.js:516`。
+- 合并去重：推荐结果合并时按“歌曲名”去重（忽略大小写与空格，保留首次出现的顺序）。逻辑位置：`js/ajax.js:567`。
+
+### 同域名部署（Nginx 反向代理）
+- 配置文件：`nginx.conf`（已随项目提供）。
+- 路由约定：
+  - 推荐服务：`location ^~ /api/v1/recommend/` -> `http://127.0.0.1:8080`（见 `nginx.conf:31`）。
+  - 其余路径：代理到 PHP 应用（Apache，容器/服务名 `webapp`）。
+- 说明：将推荐服务与应用部署在同一台机器后，通过同一个域名访问；无需跨域。若推荐服务不在本机，按需修改 `proxy_pass`。
+
+### 入口密码（服务端配置）
+- 为了保护入口，密码在服务端写死：`api.php:30` 的 `MKPLAYER_PASSWORD` 常量。
+- 前端验证流程：`js/player.js:95` 调用 `api.php?types=auth` 校验后再放行；失败会提示。
+
+### Docker Compose（现有）
+- 当前 `docker-compose.yml` 启动 `php:7.4-apache` 并映射 `4000:80`。
+- 如需用 Nginx 统一入口：
+  - 启动 Nginx（挂载 `nginx.conf`），监听 `80/443`；
+  - 推荐服务跑在 `127.0.0.1:8080` 或容器网络可达地址；
+  - 应用保持 Apache 对内监听 `80`，由 Nginx 反向代理统一对外域名。
+
+### 运行环境与必要配置
+- PHP 5.4+，启用 `curl_exec`、`file_get_contents`、`json_decode`、`openssl_encrypt`。
+- 定时清理缓存（建议每分钟）：`api.php?types=cache` 或定时删除 `cache/*.json`。
+- 下载目录头设置：
+  - Apache：`apache.conf:18` 针对 `/temp/` 设置下载头。
+  - Nginx：参考 README 的 `location ~/temp/` 示例。
+
+### 其它说明
+- 收藏数据保存在 `collections/collections.json`（由后端 `api.php:308` 维护）。
+- 播放历史最多 300 条，持久化在本地存储；播放历史仅用于偏好输入，无有效期限制。逻辑位置：`js/functions.js:1655`。
+
+### 版权与致谢
+- 原作者：[mengkun(https://mkblog.cn)](https://mkblog.cn)。
+- 依赖：jQuery、Meting、layui、mCustomScrollbar、background-blur 等。
+
+### 更新与计划
+- 已新增：智能推荐、VIP过滤/跳过、热评显示、收藏导入导出等。
+- 后续按需迭代，欢迎提 Issue。
