@@ -40,7 +40,7 @@ var musicList = [
     {
         id: "recommend_playlist",
         name: "智能推荐歌单",
-        cover: "images/player_cover.png",
+        cover: "images/recommend.jpg",
         creatorName: "AI",
         creatorAvatar: "images/avatar.png",
         item: []
