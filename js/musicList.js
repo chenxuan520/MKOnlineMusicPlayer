@@ -36,6 +36,15 @@ var musicList = [
     },  
     // 以上三个系统预留列表请勿更改，否则可能导致程序无法正常运行！
     //*********************************************
+    // 智能推荐歌单
+    {
+        id: "recommend_playlist",
+        name: "智能推荐歌单",
+        cover: "images/player_cover.png",
+        creatorName: "AI",
+        creatorAvatar: "images/avatar.png",
+        item: []
+    },
     // 自定义列表开始，您可以自由添加您的自定义列表
     {
         id: 3778678     // 云音乐热歌榜
@@ -239,19 +248,7 @@ var musicList = [
                 lyric_id: "2a24dea6c74884195fe5b9732fd95ca8",
                 pic: "http://singerimg.kugou.com/uploadpic/softhead/400/20161226/20161226105135733.jpg",
                 url: ""     // 酷狗的外链有效期较短，插入时 url [必须]设置空值，播放时再临时抓取
-            },
-            {
-                id: "121004737",
-                name: "难忘今宵",
-                artist: "李谷一",
-                album: "难忘今宵",
-                source: "baidu",        // 百度
-                url_id: "121004737",
-                pic_id: "121004737",
-                lyric_id: "121004737",
-                pic: "http://musicdata.baidu.com/data2/pic/2733cd9816b8618afd3038d5d9444940/266105319/266105319.jpg@s_0,w_150",
-                url: ""         // 百度的外链有效期较短，插入时 url [必须]设置空值，播放时再临时抓取
-            }  // 列表中最后一首歌大括号后面不要加逗号
+            }
         ]
     },
     // 方式二：直接提供网易云歌单ID

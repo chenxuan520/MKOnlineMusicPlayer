@@ -325,6 +325,13 @@ $(function(){
     // 点击专辑显示专辑歌曲
     $("#sheet").on("click",".sheet-cover,.sheet-name", function() {
         var num = parseInt($(this).parent().data("no"));
+        
+        // 智能推荐歌单处理
+        if (musicList[num] && musicList[num].id === 'recommend_playlist') {
+             loadRecommendList(num);
+             return true;
+        }
+
         // 是用户列表，但是还没有加载数据
         if(musicList[num].item.length === 0 && musicList[num].creatorID) {
             layer.msg('列表读取中...', {icon: 16,shade: [0.25,,'#000'],shadeClose: true,time: 500}); // 0代表加载的风格，支持0-2
@@ -611,6 +618,10 @@ function settingsBox() {
                 $(layero).find("input[name='skip-vip']").prop("checked", false);
             }
 
+            // 回填推荐服务配置
+            $(layero).find("input[name='recommend-domain']").val(mkPlayer.recommendDomain);
+            $(layero).find("input[name='recommend-token']").val(mkPlayer.recommendToken);
+
             // 渲染背景设置状态
             var bgType = (mkPlayer.bgConfig && mkPlayer.bgConfig.type) || 'default';
             $(layero).find("input[name='bg-type'][value='" + bgType + "']").prop("checked", true);
@@ -664,6 +675,10 @@ function settingsBox() {
                 var isHotCommentsOnly = $(layero).find("input[name='hot-comments-only']").prop("checked");
                 var isFilterVip = $(layero).find("input[name='filter-vip']").prop("checked");
                 var isSkipVip = $(layero).find("input[name='skip-vip']").prop("checked");
+                
+                // 获取推荐服务设置
+                var recommendDomain = $(layero).find("input[name='recommend-domain']").val();
+                var recommendToken = $(layero).find("input[name='recommend-token']").val();
 
                 // 获取背景设置
                 var newBgType = $(layero).find("input[name='bg-type']:checked").val();
@@ -680,6 +695,8 @@ function settingsBox() {
                 mkPlayer.hotCommentsOnly = isHotCommentsOnly;
                 mkPlayer.filterVip = isFilterVip;
                 mkPlayer.skipVip = isSkipVip;
+                mkPlayer.recommendDomain = recommendDomain;
+                mkPlayer.recommendToken = recommendToken;
 
                 mkPlayer.bgConfig = {
                     type: newBgType,
@@ -691,6 +708,8 @@ function settingsBox() {
                 playerSavedata('hotCommentsOnly', mkPlayer.hotCommentsOnly);
                 playerSavedata('filterVip', mkPlayer.filterVip);
                 playerSavedata('skipVip', mkPlayer.skipVip);
+                playerSavedata('recommendDomain', mkPlayer.recommendDomain);
+                playerSavedata('recommendToken', mkPlayer.recommendToken);
                 playerSavedata('bgConfig', mkPlayer.bgConfig);
 
                 // 应用背景更改
@@ -1165,6 +1184,11 @@ function loadList(list) {
         }
 
         listToTop();    // 播放列表滚动到顶部
+        
+        // 强制刷新滚动条，防止因容器不可见导致的高度计算错误
+        if(!rem.isMobile) {
+            $("#main-list").mCustomScrollbar("update");
+        }
     }
 }
 
@@ -1717,8 +1741,13 @@ rem.initSheetList = function() {
         if(!musicList[i].creatorID && (musicList[i].item == undefined || (i>2 && musicList[i].item.length == 0))) {
             musicList[i].item = [];
             if(musicList[i].id) {   // 列表ID已定义
-                // ajax获取列表信息
-                ajaxPlayList(musicList[i].id, i);
+                // 智能推荐歌单不自动加载，点击时才加载
+                if (musicList[i].id === 'recommend_playlist') {
+                    // Do nothing here to skip ajaxPlayList, but allow addSheet to run
+                } else {
+                    // ajax获取列表信息
+                    ajaxPlayList(musicList[i].id, i);
+                }
             } else {    // 列表 ID 未定义
                 if(!musicList[i].name) musicList[i].name = '未命名';
             }

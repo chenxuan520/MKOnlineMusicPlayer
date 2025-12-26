@@ -128,8 +128,6 @@ function ajaxUrl(music, callback)
                     jsonData.url = jsonData.url.replace(/m7c.music./g, "m7.music.");
                     jsonData.url = jsonData.url.replace(/m8c.music./g, "m8.music.");
                 }
-            } else if(music.source == "baidu") {    // 解决百度音乐防盗链
-                jsonData.url = jsonData.url.replace(/http:\/\/zhangmenshiting.qianqian.com/g, "https://gss0.bdstatic.com/y0s1hSulBw92lNKgpU_Z2jR7b2w6buu");
             }
             
             if(jsonData.url === "") {
@@ -219,6 +217,13 @@ function ajaxPlayList(lid, id, callback) {
             musicList[id].isloading = false;    // 列表已经加载完了
         },  // complete
         success: function(jsonData){
+            // 检查数据有效性
+            if (!jsonData || !jsonData.playlist) {
+                if (mkPlayer.debug) console.error("歌单数据缺失或格式错误", jsonData);
+                layer.msg('无法获取歌单信息');
+                return;
+            }
+
             // 存储歌单信息
             var tempList = {
                 id: lid,    // 列表的网易云 id
@@ -391,4 +396,236 @@ function ajaxUserList(uid)
         }   // error
     });//ajax
     return true;
+}
+
+// 智能推荐相关功能
+// 加载推荐歌单
+function loadRecommendList(listIndex) {
+    if (!mkPlayer.recommendDomain || !mkPlayer.recommendToken) {
+        layer.msg('请先在设置中配置推荐服务域名和Token', {icon: 5, time: 3000});
+        return;
+    }
+
+    var loadingMsg = layer.msg('正在分析您的喜好...', {icon: 16, shade: [0.25, '#000'], time: 0});
+    var token = mkPlayer.recommendToken ? mkPlayer.recommendToken.trim() : "";
+
+    // 定义核心推荐请求函数
+    var requestRecommendation = function(favList) {
+        if (!favList || favList.length === 0) {
+            favList = ["流行音乐"]; // 默认兜底
+        }
+
+        $.ajax({
+            type: "POST",
+            url: mkPlayer.recommendDomain + "/api/v1/recommend/music?async=true",
+            headers: {
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json"
+            },
+            data: JSON.stringify({ favorites: favList }),
+            dataType: "json",
+            success: function(data) {
+                if (data.task_id) {
+                    layer.msg('正在为您生成个性化推荐...', {icon: 16, shade: [0.25, '#000'], time: 0});
+                    pollRecommendTask(data.task_id, listIndex, loadingMsg, token);
+                } else {
+                    layer.close(loadingMsg);
+                    layer.msg('推荐服务未返回任务ID', {icon: 5});
+                }
+            },
+            error: function(xhr) {
+                layer.close(loadingMsg);
+                if (xhr.status === 401) {
+                    layer.msg('鉴权失败(401)：请检查设置中的Token是否正确', {icon: 5, time: 3000});
+                } else {
+                    var errMsg = '推荐请求失败';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errMsg += ': ' + xhr.responseJSON.error;
+                    } else {
+                        errMsg += ': ' + xhr.status;
+                    }
+                    layer.msg(errMsg, {icon: 5});
+                }
+            }
+        });
+    };
+
+    // 先尝试获取收藏列表
+    $.ajax({
+        type: mkPlayer.method,
+        url: mkPlayer.api,
+        data: "types=collections&action=list",
+        dataType: mkPlayer.dataType,
+        success: function(jsonData) {
+            var favorites = [];
+            if (jsonData.success && jsonData.collections) {
+                // 随机提取20首收藏的歌曲名作为推荐参数
+                var collectionList = jsonData.collections;
+                
+                if (collectionList.length > 20) {
+                    // Fisher-Yates Shuffle 随机选取前20个
+                    for (var i = 0; i < 20; i++) {
+                        var j = i + Math.floor(Math.random() * (collectionList.length - i));
+                        var temp = collectionList[i];
+                        collectionList[i] = collectionList[j];
+                        collectionList[j] = temp;
+                        
+                        favorites.push(collectionList[i].name);
+                    }
+                } else {
+                    // 数量不足20，直接全部使用
+                    for (var i = 0; i < collectionList.length; i++) {
+                        favorites.push(collectionList[i].name);
+                    }
+                }
+            }
+            
+            // 如果收藏为空，尝试使用播放历史
+            if (favorites.length === 0) {
+                 if (musicList[2].item && musicList[2].item.length > 0) {
+                    for (var i = 0; i < Math.min(musicList[2].item.length, 10); i++) {
+                         if(musicList[2].item[i].name) favorites.push(musicList[2].item[i].name);
+                    }
+                }
+            }
+            
+            requestRecommendation(favorites);
+        },
+        error: function() {
+            // 获取收藏失败，尝试使用播放历史
+            var favorites = [];
+             if (musicList[2].item && musicList[2].item.length > 0) {
+                for (var i = 0; i < Math.min(musicList[2].item.length, 10); i++) {
+                     if(musicList[2].item[i].name) favorites.push(musicList[2].item[i].name);
+                }
+            }
+            requestRecommendation(favorites);
+        }
+    });
+}
+
+// 轮询推荐任务状态
+function pollRecommendTask(taskId, listIndex, loadingMsg, token) {
+    setTimeout(function() {
+        $.ajax({
+            type: "GET",
+            url: mkPlayer.recommendDomain + "/api/v1/recommend/result/" + taskId,
+            headers: {
+                "Authorization": "Bearer " + token
+            },
+            success: function(data) {
+                console.log("轮询任务状态:", data);
+                if (data.status === "processing" || data.status === "pending") {
+                    pollRecommendTask(taskId, listIndex, loadingMsg, token);
+                } else if (data.status === "completed") {
+                    processRecommendItems(data.data.items, listIndex, loadingMsg);
+                } else if (data.status === "failed") {
+                    layer.close(loadingMsg);
+                    console.error("任务处理失败:", data.error);
+                    layer.msg('推荐任务失败: ' + (data.error || '未知错误'));
+                } else {
+                    layer.close(loadingMsg);
+                    console.warn("未知任务状态:", data.status);
+                    layer.msg('未知任务状态: ' + data.status);
+                }
+            },
+            error: function(xhr, textStatus, errorThrown) {
+                layer.close(loadingMsg);
+                console.error("轮询请求失败:", textStatus, errorThrown, xhr);
+                if (textStatus === 'parsererror') {
+                    layer.msg('轮询接口返回数据格式错误', {icon: 5});
+                } else {
+                    layer.msg('查询任务状态失败: ' + xhr.status);
+                }
+            }
+        });
+    }, 10000); // 每10秒轮询一次
+}
+
+// 处理推荐结果
+function processRecommendItems(items, listIndex, loadingMsg) {
+    if (!items || items.length === 0) {
+        layer.close(loadingMsg);
+        layer.msg('没有推荐结果');
+        return;
+    }
+
+    console.log("推荐服务返回的原始列表:", items);
+
+    musicList[listIndex].item = []; // 清空原有列表
+    // 初始化数组，长度与items一致，用于按顺序存放结果
+    var results = new Array(items.length);
+    var processedCount = 0;
+    var totalItems = items.length;
+
+    // 确定搜索源，默认网易云
+    var searchSource = rem.source || 'netease';
+
+    function checkDone() {
+        processedCount++;
+        if (processedCount >= totalItems) {
+            // 过滤掉未找到的（undefined或null）
+            musicList[listIndex].item = results.filter(function(item) { return item; });
+            layer.close(loadingMsg);
+            
+            // 切换到推荐列表并显示
+            rem.dislist = listIndex;
+            loadList(listIndex);
+            
+            layer.msg('智能推荐已更新');
+        }
+    }
+
+    items.forEach(function(item, index) {
+        // 对每一项进行搜索
+        // 注意：搜索接口需要一一调用
+        searchAndAddSong(item.name, searchSource, function(song) {
+            results[index] = song; // 按原顺序存放
+            checkDone();
+        });
+    });
+}
+
+// 搜索单曲并返回结果（不操作UI）
+function searchAndAddSong(keyword, source, callback) {
+    // 增加搜索数量 count=20，防止开启VIP过滤时，前几个结果全部被过滤导致无结果
+    $.ajax({
+        type: mkPlayer.method, 
+        url: mkPlayer.api, 
+        data: "types=search&count=20&source=" + source + "&pages=1&name=" + encodeURIComponent(keyword) + "&filter_vip=" + mkPlayer.filterVip,
+        dataType: mkPlayer.dataType,
+        success: function(jsonData) {
+             if (jsonData && jsonData.length > 0) {
+                // api.php 后端已根据 filter_vip 参数进行了过滤
+                // 即使过滤后，我们也取第一个结果
+                var chosenData = jsonData[0];
+                
+                // 构造歌曲对象
+                var song = {
+                    id: chosenData.id,
+                    name: chosenData.name,
+                    artist: chosenData.artist[0],
+                    album: chosenData.album,
+                    source: chosenData.source,
+                    url_id: chosenData.url_id,
+                    pic_id: chosenData.pic_id,
+                    lyric_id: chosenData.lyric_id,
+                    pic: null,
+                    url: null
+                };
+
+                // 保留源特定的 VIP/付费字段，防止信息丢失
+                if (chosenData.fee !== undefined) song.fee = chosenData.fee;
+                if (chosenData.pay !== undefined) song.pay = chosenData.pay;
+                if (chosenData.privilege !== undefined) song.privilege = chosenData.privilege;
+
+                callback(song);
+            } else {
+                callback(null); // 未找到
+            }
+        },
+        error: function() {
+            callback(null); // 出错
+        }
+    });
 }

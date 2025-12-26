@@ -50,8 +50,8 @@ $DOWNLOAD = new Download($source);
 
 $API->format(true); // 启用格式化功能
 
-if($source == 'kugou' || $source == 'baidu' || $source == 'tencent') {
-    define('NO_HTTPS', true);        // 酷狗、百度音乐和QQ源暂不支持 https
+if($source == 'kugou' || $source == 'tencent') {
+    define('NO_HTTPS', true);        // 酷狗和QQ源暂不支持 https
 } elseif(($source == 'netease') && $netease_cookie) {
     $API->cookie($netease_cookie);    // 解决网易云 Cookie 失效
 }
