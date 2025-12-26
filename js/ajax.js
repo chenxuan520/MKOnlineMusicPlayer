@@ -565,7 +565,26 @@ function processRecommendItems(items, listIndex, loadingMsg) {
         processedCount++;
         if (processedCount >= totalItems) {
             // 过滤掉未找到的（undefined或null）
-            musicList[listIndex].item = results.filter(function(item) { return item; });
+            var filtered = results.filter(function(item) { return item; });
+
+            // 按歌曲名字去重（忽略大小写和前后空格），保留首次出现以保持推荐顺序
+            var seen = {};
+            var deduped = [];
+            for (var i = 0; i < filtered.length; i++) {
+                var it = filtered[i];
+                var key = (it.name || '').trim().toLowerCase();
+                if (!key) {
+                    // 无有效名字，直接保留
+                    deduped.push(it);
+                    continue;
+                }
+                if (!seen[key]) {
+                    seen[key] = true;
+                    deduped.push(it);
+                }
+            }
+
+            musicList[listIndex].item = deduped;
             layer.close(loadingMsg);
             
             // 切换到推荐列表并显示
