@@ -31,8 +31,7 @@ var mkPlayer = {
     bgConfig: { type: 'default', url: '' } // 背景设置配置
 };
 
-// 硬编码密码
-const PASSWORD = "123456"; // 默认密码，请修改！
+// 移除硬编码密码，改为服务端认证
 
 // 页面加载完成后执行
 $(function() {
@@ -95,34 +94,51 @@ $(function() {
 
     function checkPassword() {
         const inputPassword = $('#password-input').val();
-        if (inputPassword === PASSWORD) {
-            localStorage.setItem('mkplayer_authenticated', 'true');
-            $('#password-overlay').fadeOut(300, function() {
-                $(this).remove(); // 移除覆盖层
-            });
-            // 密码正确后，可以执行播放器初始化等操作
-            // 这里假设播放器初始化在其他地方，或者在密码验证成功后才开始加载
-            // 如果播放器初始化依赖于密码验证，可能需要在这里调用相关初始化函数
-            if (mkPlayer.placard) {
-                // 确保 layui.layer 已经加载
-                layui.use('layer', function(){
-                    var layer = layui.layer;
-                    layer.config({
-                        shade: [0.25,'#000'],
-                        shadeClose: true
-                    });
-                    layer.open({
-                        btn: ['我知道了'],
-                        title: '公告',
-                        maxWidth: 320,
-                        content: $('#layer-placard-box').html()
-                    });
-                });
-            }
-        } else {
-            $('#password-error').fadeIn(200).delay(1500).fadeOut(200);
-            $('#password-input').val(''); // 清空输入框
+        if (!inputPassword) {
+            $('#password-error').text('请输入密码').fadeIn(200).delay(1500).fadeOut(200);
+            return;
         }
+
+        // 调用服务端进行密码校验
+        $.ajax({
+            type: mkPlayer.method,
+            url: mkPlayer.api,
+            data: 'types=auth&password=' + encodeURIComponent(inputPassword),
+            dataType: mkPlayer.dataType,
+            success: function(jsonData) {
+                if (jsonData && jsonData.success) {
+                    localStorage.setItem('mkplayer_authenticated', 'true');
+                    $('#password-overlay').fadeOut(300, function() {
+                        $(this).remove(); // 移除覆盖层
+                    });
+
+                    // 密码正确后显示公告（若启用）
+                    if (mkPlayer.placard) {
+                        layui.use('layer', function(){
+                            var layer = layui.layer;
+                            layer.config({
+                                shade: [0.25,'#000'],
+                                shadeClose: true
+                            });
+                            layer.open({
+                                btn: ['我知道了'],
+                                title: '公告',
+                                maxWidth: 320,
+                                content: $('#layer-placard-box').html()
+                            });
+                        });
+                    }
+                } else {
+                    var msg = (jsonData && jsonData.message) ? jsonData.message : '密码错误，请重试。';
+                    $('#password-error').text(msg).fadeIn(200).delay(1500).fadeOut(200);
+                    $('#password-input').val(''); // 清空输入框
+                }
+            },
+            error: function(XMLHttpRequest, textStatus, errorThrown) {
+                var msg = '认证失败 - ' + XMLHttpRequest.status;
+                $('#password-error').text(msg).fadeIn(200).delay(2000).fadeOut(200);
+            }
+        });
     }
 });
 

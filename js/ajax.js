@@ -401,13 +401,20 @@ function ajaxUserList(uid)
 // 智能推荐相关功能
 // 加载推荐歌单
 function loadRecommendList(listIndex) {
-    if (!mkPlayer.recommendDomain || !mkPlayer.recommendToken) {
-        layer.msg('请先在设置中配置推荐服务域名和Token', {icon: 5, time: 3000});
+    // 优先使用用户配置的域名，否则回落为当前页面的域名（自动带 http/https）
+    var domain = mkPlayer.recommendDomain && mkPlayer.recommendDomain.trim()
+        ? mkPlayer.recommendDomain.trim()
+        : (location.protocol + '//' + location.host);
+    if (domain.slice(-1) === '/') domain = domain.slice(0, -1);
+
+    // Token 是必填项
+    var token = mkPlayer.recommendToken ? mkPlayer.recommendToken.trim() : "";
+    if (!token) {
+        layer.msg('请先在设置中配置推荐服务 Token', {icon: 5, time: 3000});
         return;
     }
 
     var loadingMsg = layer.msg('正在分析您的喜好...', {icon: 16, shade: [0.25, '#000'], time: 0});
-    var token = mkPlayer.recommendToken ? mkPlayer.recommendToken.trim() : "";
 
     // 定义核心推荐请求函数
     var requestRecommendation = function(favList) {
@@ -417,7 +424,7 @@ function loadRecommendList(listIndex) {
 
         $.ajax({
             type: "POST",
-            url: mkPlayer.recommendDomain + "/api/v1/recommend/music?async=true",
+            url: domain + "/api/v1/recommend/music?async=true",
             headers: {
                 "Authorization": "Bearer " + token,
                 "Content-Type": "application/json"
@@ -506,10 +513,15 @@ function loadRecommendList(listIndex) {
 
 // 轮询推荐任务状态
 function pollRecommendTask(taskId, listIndex, loadingMsg, token) {
+    // 与请求保持同一域名逻辑（再次从 mkPlayer 或 location 计算，避免为空）
+    var domain = mkPlayer.recommendDomain && mkPlayer.recommendDomain.trim()
+        ? mkPlayer.recommendDomain.trim()
+        : (location.protocol + '//' + location.host);
+    if (domain.slice(-1) === '/') domain = domain.slice(0, -1);
     setTimeout(function() {
         $.ajax({
             type: "GET",
-            url: mkPlayer.recommendDomain + "/api/v1/recommend/result/" + taskId,
+            url: domain + "/api/v1/recommend/result/" + taskId,
             headers: {
                 "Authorization": "Bearer " + token
             },

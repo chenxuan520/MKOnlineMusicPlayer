@@ -618,8 +618,13 @@ function settingsBox() {
                 $(layero).find("input[name='skip-vip']").prop("checked", false);
             }
 
-            // 回填推荐服务配置
-            $(layero).find("input[name='recommend-domain']").val(mkPlayer.recommendDomain);
+            // 回填推荐服务配置；如果域名未设置则默认填当前页面的域名（自动带 http/https）
+            if (mkPlayer.recommendDomain && mkPlayer.recommendDomain.trim()) {
+                $(layero).find("input[name='recommend-domain']").val(mkPlayer.recommendDomain);
+            } else {
+                var origin = location.protocol + '//' + location.host;
+                $(layero).find("input[name='recommend-domain']").val(origin);
+            }
             $(layero).find("input[name='recommend-token']").val(mkPlayer.recommendToken);
 
             // 渲染背景设置状态

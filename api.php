@@ -27,6 +27,7 @@ define('DEBUG', false);      // 是否开启调试模式，正常使用时请将
 define('JSONP', false);      // 是否开启JSONP模式，使用远程api时请开启
 define('CACHE_PATH', 'cache/');     // 文件缓存目录,请确保该目录存在且有读写权限。如无需缓存，可将此行注释掉
 define('TEMP_PATH', 'temp/');       // 临时文件目录，用于存放下载的歌曲，请确保该目录存在且有读写权限。
+define('MKPLAYER_PASSWORD', '123456'); // 前端入口密码（写死在服务端，修改此值即可）
 
 /*
  如果遇到程序不能正常运行，请开启调试模式，然后访问 http://你的网站/音乐播放器地址/api.php ，进入服务器运行环境检测。
@@ -64,6 +65,20 @@ if(defined('TEMP_PATH') && !is_dir(TEMP_PATH)) createFolders(TEMP_PATH);
 $types = getParam('types');
 switch($types)   // 根据请求的 Api，执行相应操作
 {
+    case 'auth': // 简单密码校验（服务端写死）
+        $input = getParam('password');
+        $resp = array('success' => false);
+        if (defined('MKPLAYER_PASSWORD') && MKPLAYER_PASSWORD !== '') {
+            // 使用 hash_equals 防止时序攻击
+            $resp['success'] = hash_equals(MKPLAYER_PASSWORD, $input);
+            if (!$resp['success']) {
+                $resp['message'] = '密码错误';
+            }
+        } else {
+            $resp['message'] = '未配置服务端密码';
+        }
+        echojson(json_encode($resp));
+        break;
     case 'url':   // 获取歌曲链接
         $id = getParam('id');  // 歌曲ID
 
