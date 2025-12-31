@@ -653,6 +653,26 @@ function settingsBox() {
 
             form.render();
 
+            // 绑定 Token 显示/隐藏事件（确保位于弹窗成功回调内，可使用 layero 上下文）
+            var $tokenInput = $(layero).find("input[name='recommend-token']");
+            var $toggleBtn = $(layero).find("#toggle-token-visibility");
+            var $eyeIcon = $(layero).find(".token-eye-icon");
+
+            // 初始为密码态
+            $tokenInput.attr('type', 'password');
+            $eyeIcon.removeClass('token-eye-open').addClass('token-eye-closed');
+
+            $toggleBtn.off('click').on('click', function(){
+                var isPassword = $tokenInput.attr('type') === 'password';
+                if (isPassword) {
+                    $tokenInput.attr('type', 'text');
+                    $eyeIcon.removeClass('token-eye-closed').addClass('token-eye-open');
+                } else {
+                    $tokenInput.attr('type', 'password');
+                    $eyeIcon.removeClass('token-eye-open').addClass('token-eye-closed');
+                }
+            });
+
             // 监听背景模式切换
             form.on('radio(bg-type)', function(data){
                 if(data.value === 'custom'){

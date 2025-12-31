@@ -295,7 +295,10 @@
             <div class="layui-form-item">
                 <label class="layui-form-label" style="width: 80px; padding: 9px 0; text-align: left;">Token</label>
                 <div class="layui-input-block" style="margin-left: 90px;">
-                    <input type="text" name="recommend-token" placeholder="Bearer Token" autocomplete="off" class="layui-input">
+                    <div class="token-input-wrapper">
+                        <input type="password" name="recommend-token" id="recommend-token-input" placeholder="Bearer Token" autocomplete="off" class="layui-input">
+                        <span id="toggle-token-visibility" class="token-eye-icon token-eye-closed token-eye-btn" title="显示/隐藏Token"></span>
+                    </div>
                 </div>
             </div>
             
