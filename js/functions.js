@@ -1840,18 +1840,41 @@ rem.initSheetList = function() {
     // 移除已有的登陆条（如果有）
     $("#sheet-bar").remove();
 
-    // 显示所有的歌单（从系统歌单开始）
+    // 先优先展示智能推荐歌单图标
+    var recommendIndex = -1;
+    for (var r=3; r<musicList.length; r++) {
+        if (musicList[r] && musicList[r].id === 'recommend_playlist') {
+            recommendIndex = r;
+            break;
+        }
+    }
+    if (recommendIndex !== -1) {
+        // 初始化数据结构，避免空引用
+        if (!musicList[recommendIndex].item) {
+            musicList[recommendIndex].item = [];
+        }
+        // 预加载封面以提升首屏可见性
+        if (musicList[recommendIndex].cover) {
+            try {
+                var preloadImg = new Image();
+                preloadImg.src = musicList[recommendIndex].cover;
+            } catch (e) {}
+        }
+        // 添加智能推荐歌单到侧边栏（优先）
+        addSheet(recommendIndex, musicList[recommendIndex].name, musicList[recommendIndex].cover);
+    }
+
+    // 显示所有的歌单（从系统歌单开始），跳过已添加的智能推荐以避免重复
     for(var i=3; i<musicList.length; i++) {
+        if (i === recommendIndex) continue; // 已优先添加
         if (!musicList[i]) continue;
 
         // 列表不是用户列表，并且信息为空，需要ajax读取列表
         if(!musicList[i].creatorID && (musicList[i].item == undefined || (i>2 && musicList[i].item.length == 0))) {
             musicList[i].item = [];
             if(musicList[i].id) {   // 列表ID已定义
-                // 智能推荐歌单不自动加载，点击时才加载
-                if (musicList[i].id === 'recommend_playlist') {
-                    // Do nothing here to skip ajaxPlayList, but allow addSheet to run
-                } else {
+                // 其他歌单通过 Ajax 异步加载信息
+                if (musicList[i].id !== 'recommend_playlist') {
                     // ajax获取列表信息
                     ajaxPlayList(musicList[i].id, i);
                 }
