@@ -216,6 +216,11 @@ $(function(){
                         '<span class="list-icon icon-move-down" data-function="move-down" title="下移"></span>';
             }
 
+            // 如果当前显示的是“正在播放”列表，添加“跳过/不喜欢”按钮
+            if (rem.dislist === 1) {
+                html += '<span class="list-icon icon-skip" data-function="skip" title="不喜欢，跳过并从列表移除"></span>';
+            }
+
             html += '</div>';
             target.html(html);
             $(this).data("loadmenu", true);
@@ -253,7 +258,7 @@ $(function(){
     });
 
     // 列表中的菜单点击
-    $(".music-list").on("click",".icon-play,.icon-download,.icon-share,.icon-collect,.icon-move-up,.icon-move-down", function() {
+    $(".music-list").on("click",".icon-play,.icon-download,.icon-share,.icon-collect,.icon-move-up,.icon-move-down,.icon-skip", function() {
         var num = parseInt($(this).parent().data("no"));
         if(isNaN(num)) return false;
         switch($(this).data("function")) {
@@ -309,6 +314,14 @@ $(function(){
             case "move-down":   // 下移歌曲
                 if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
                     moveCollectionItem(num, 1); // 向下移动
+                }
+            break;
+            case "skip":   // 跳过并移除正在播放列表中的歌曲
+                // 仅在“正在播放”列表中生效
+                if (rem.dislist === 1) {
+                    removePlayingItem(num, { playNext: true });
+                } else {
+                    layer.msg('请在“正在播放”列表中使用跳过');
                 }
             break;
         }
@@ -1510,6 +1523,75 @@ function addListbar(types) {
         break;
     }
     rem.mainList.append(html);
+}
+
+// 从“正在播放”列表移除指定位置的歌曲，并根据需要切歌
+// 参数：index 要移除的列表索引
+// 参数：options { playNext: boolean } 如果移除的是当前播放项，是否自动播放下一首
+function removePlayingItem(index, options) {
+    options = options || {};
+
+    // 校验基础数据
+    if (!musicList[1] || !musicList[1].item || musicList[1].item.length === 0) {
+        layer.msg('正在播放列表为空');
+        return false;
+    }
+    if (index < 0 || index >= musicList[1].item.length) {
+        return false;
+    }
+
+    var removingCurrent = (rem.playid !== undefined && index === rem.playid);
+
+    // 从播放列表中移除
+    musicList[1].item.splice(index, 1);
+
+    // 保存更新后的播放列表
+    playerSavedata('playing', musicList[1].item);
+
+    // 更新UI：移除对应的列表项
+    $('.list-item[data-no="' + index + '"]').remove();
+
+    // 重新编号后续项的 data-no 与显示序号
+    $('.list-item').each(function() {
+        var currentDataNo = parseInt($(this).attr('data-no'));
+        if (!isNaN(currentDataNo) && currentDataNo > index) {
+            var newDataNo = currentDataNo - 1;
+            $(this).attr('data-no', newDataNo);
+            $(this).find('.list-num').text(newDataNo + 1);
+        }
+    });
+
+    // 刷新列表播放状态样式
+    refreshList();
+
+    // 如果列表已经空了，清理状态与UI
+    if (musicList[1].item.length === 0) {
+        rem.playlist = undefined;
+        rem.playid = undefined;
+
+        rem.mainList.html('');
+        addListhead();
+        addListbar('nodata');
+        return true;
+    }
+
+    // 维护 rem.playid
+    if (rem.playid !== undefined) {
+        if (rem.playid > index) {
+            // 被移除的是正在播放项之前的某一项 -> 当前播放索引左移
+            rem.playid = rem.playid - 1;
+        } else if (rem.playid === index) {
+            // 移除了当前正在播放项 -> 当前索引保持不变，等于下一首
+            if (rem.playid >= musicList[1].item.length) {
+                rem.playid = 0; // 边界处理，若移除的是最后一首
+            }
+            if (options.playNext) {
+                playList(rem.playid);
+            }
+        }
+    }
+
+    return true;
 }
 
 // 将时间格式化为 00:00 的格式

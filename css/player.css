@@ -511,6 +511,24 @@ body {
     background-color: transparent; /* 保持透明 */
 }
 
+/* 跳过/不喜欢按钮样式 */
+.icon-skip {
+    width: 36px;
+    height: 36px;
+    float: left;
+    margin-left: 10px;
+    cursor: pointer;
+    /* 使用带圈叉的图标，明确表示“移除/不喜欢” */
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.24 12.83-1.41 1.41L12 13.41l-2.83 2.83-1.41-1.41L10.59 12 7.76 9.17l1.41-1.41L12 10.59l2.83-2.83 1.41 1.41L13.41 12l2.83 2.83z'/%3E%3C/svg%3E") transparent no-repeat center;
+    background-size: 65%;
+    border-radius: 4px;
+    transition: transform 0.2s ease;
+}
+.icon-skip:hover {
+    transform: scale(1.2);
+    background-color: transparent; /* 保持透明 */
+}
+
 /* 上移/下移按钮样式 */
 .icon-move-up {
     width: 36px;
@@ -1215,5 +1233,3 @@ body {
     font-size: 12px;
     opacity: 0.8;
 }
-
-
