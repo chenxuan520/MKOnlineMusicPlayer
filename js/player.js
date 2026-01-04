@@ -231,7 +231,13 @@ function pause() {
 
             // For collections list (dislist == -1), we should not copy from musicList[-1]
             if(rem.dislist != -1 && musicList[rem.dislist] && musicList[rem.dislist].item) {
-                musicList[1].item = musicList[rem.dislist].item; // 更新正在播放列表中音乐
+                // 使用深拷贝，避免与原播放列表共享同一数组导致索引、显示错乱
+                try {
+                    musicList[1].item = JSON.parse(JSON.stringify(musicList[rem.dislist].item));
+                } catch (e) {
+                    // 回退为浅拷贝
+                    musicList[1].item = musicList[rem.dislist].item.slice ? musicList[rem.dislist].item.slice() : musicList[rem.dislist].item;
+                }
                 // 正在播放 列表项已发生变更，进行保存
                 playerSavedata('playing', musicList[1].item);   // 保存正在播放列表
             }
@@ -281,14 +287,14 @@ function audioPlay() {
         $("#music-progress .mkpgb-dot").addClass("dot-move");   // 小点闪烁效果
     }
 
-    // 获取当前播放的歌曲信息， with safety checks
-    if(!rem.playlist || rem.playid === undefined ||
-       !musicList[rem.playlist] || !musicList[rem.playlist].item ||
-       !musicList[rem.playlist].item[rem.playid]) {
+    // 获取当前播放的歌曲信息（统一以“正在播放”列表 musicList[1] 为准）
+    if(rem.playid === undefined ||
+       !musicList[1] || !musicList[1].item ||
+       !musicList[1].item[rem.playid]) {
         console.error('播放信息错误，无法获取当前歌曲信息');
         return;
     }
-    var music = musicList[rem.playlist].item[rem.playid];   // 获取当前播放的歌曲信息
+    var music = musicList[1].item[rem.playid];   // 获取当前播放的歌曲信息（以播放队列为准）
     var msg = " 正在播放: " + music.name + " - " + music.artist;  // 改变浏览器标题
 
     // 清除定时器
@@ -299,15 +305,6 @@ function audioPlay() {
     // 标题滚动
     titleFlash(msg);
 
-    // 确保当前界面已生成的菜单补充“不喜欢/跳过”按钮（参考收藏按钮一致性）
-    try {
-        $(".music-list .list-menu").each(function(){
-            var $menu = $(this);
-            if ($menu.find('.icon-skip').length === 0) {
-                $menu.append('<span class="list-icon icon-skip" data-function="skip" title="不喜欢，跳过并从正在播放列表移除"></span>');
-            }
-        });
-    } catch(e) {}
 }
 // 标题滚动
 function titleFlash(msg) {
@@ -346,7 +343,8 @@ function prevMusic() {
 // 播放下一首歌
 function nextMusic() {
     switch (rem.order ? rem.order : 1) {
-        case 1,2:
+        case 1:
+        case 2:
             playList(rem.playid + 1);
         break;
         case 3:
@@ -428,7 +426,13 @@ function listClick(no) {
         // 与之前不是同一个列表了（在播放别的列表的歌曲）或者是首次播放
         if((rem.dislist !== rem.playlist && rem.dislist !== 1) || rem.playlist === undefined) {
             rem.playlist = rem.dislist;     // 记录正在播放的列表
-            musicList[1].item = musicList[rem.playlist].item; // 更新正在播放列表中音乐
+            // 使用深拷贝，避免与原播放列表共享同一数组导致索引、显示错乱
+            try {
+                musicList[1].item = JSON.parse(JSON.stringify(musicList[rem.playlist].item));
+            } catch (e) {
+                // 回退为浅拷贝
+                musicList[1].item = musicList[rem.playlist].item.slice ? musicList[rem.playlist].item.slice() : musicList[rem.playlist].item;
+            }
 
             // 正在播放 列表项已发生变更，进行保存
             playerSavedata('playing', musicList[1].item);   // 保存正在播放列表
