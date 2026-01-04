@@ -216,10 +216,8 @@ $(function(){
                         '<span class="list-icon icon-move-down" data-function="move-down" title="下移"></span>';
             }
 
-            // 如果当前显示的是“正在播放”列表，添加“跳过/不喜欢”按钮
-            if (rem.dislist === 1) {
-                html += '<span class="list-icon icon-skip" data-function="skip" title="不喜欢，跳过并从列表移除"></span>';
-            }
+            // 添加“跳过/不喜欢”按钮（无论当前显示哪个列表都展示，操作对象为正在播放列表中的对应歌曲）
+            html += '<span class="list-icon icon-skip" data-function="skip" title="不喜欢，跳过并从正在播放列表移除"></span>';
 
             html += '</div>';
             target.html(html);
@@ -316,13 +314,62 @@ $(function(){
                     moveCollectionItem(num, 1); // 向下移动
                 }
             break;
-            case "skip":   // 跳过并移除正在播放列表中的歌曲
-                // 仅在“正在播放”列表中生效
-                if (rem.dislist === 1) {
-                    removePlayingItem(num, { playNext: true });
-                } else {
-                    layer.msg('请在“正在播放”列表中使用跳过');
-                }
+            case "skip":   // 跳过并移除正在播放列表中的歌曲（参考收藏的取数方式）
+                (function(){
+                    var music = null;
+                    // 当前界面的歌曲信息获取，与收藏保持一致
+                    if(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].item && musicList[rem.dislist].item[num]) {
+                        music = musicList[rem.dislist].item[num];
+                    } else if(rem.dislist == -1) { // Collections list（旧）
+                        music = $('.list-item[data-no="' + num + '"]').data('music');
+                    }
+
+                    if(!music || !music.id) {
+                        layer.msg('歌曲信息获取失败');
+                        return false;
+                    }
+
+                    // 在正在播放列表中查找该歌曲对应的索引
+                    var playIndex = -1;
+                    if (musicList[1] && musicList[1].item && musicList[1].item.length) {
+                        for (var i = 0; i < musicList[1].item.length; i++) {
+                            var m = musicList[1].item[i];
+                            if (m.id == music.id && m.source == music.source) {
+                                playIndex = i;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (playIndex === -1) {
+                        layer.msg('该歌曲不在“正在播放”列表中');
+                        return false;
+                    }
+
+                    // 若移除的是当前播放项，则切歌到下一首；否则仅移除不切歌
+                    var removingCurrent = (rem.playid !== undefined && playIndex === rem.playid);
+                    removePlayingItem(playIndex, { playNext: removingCurrent });
+                    layer.msg('已从正在播放列表移除');
+
+                    // 如果当前显示列表与“正在播放”列表共享同一数组，需同步当前视图的DOM（参考收藏即时反馈）
+                    if (rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].item === musicList[1].item) {
+                        // 移除当前视图中点击的这一项
+                        $('.list-item[data-no="' + num + '"]').remove();
+                        // 重新编号当前视图中后续项
+                        $('.list-item').each(function() {
+                            var currentDataNo = parseInt($(this).attr('data-no'));
+                            if (!isNaN(currentDataNo) && currentDataNo > num) {
+                                var newDataNo = currentDataNo - 1;
+                                $(this).attr('data-no', newDataNo);
+                                $(this).find('.list-num').text(newDataNo + 1);
+                                $(this).find('.list-menu').attr('data-no', newDataNo);
+                            }
+                        });
+                        // 刷新高亮，保证显示与实际播放一致
+                        refreshList();
+                    }
+                    return true;
+                })();
             break;
         }
         return true;
@@ -431,6 +478,8 @@ $(function(){
     $(".btn-next").click(function(){
         nextMusic();
     });
+
+    // 已移除底部不喜欢按钮，统一通过列表菜单中的 icon-skip 操作
 
     // 静音按钮点击事件
     $(".btn-quiet").click(function(){
@@ -1568,21 +1617,23 @@ function removePlayingItem(index, options) {
     // 保存更新后的播放列表
     playerSavedata('playing', musicList[1].item);
 
-    // 更新UI：移除对应的列表项
-    $('.list-item[data-no="' + index + '"]').remove();
+    // 若当前显示的是“正在播放”列表，则同步更新UI
+    if (rem.dislist === 1) {
+        // 移除对应的列表项
+        $('.list-item[data-no="' + index + '"]').remove();
 
-    // 重新编号后续项的 data-no 与显示序号
-    $('.list-item').each(function() {
-        var currentDataNo = parseInt($(this).attr('data-no'));
-        if (!isNaN(currentDataNo) && currentDataNo > index) {
-            var newDataNo = currentDataNo - 1;
-            $(this).attr('data-no', newDataNo);
-            $(this).find('.list-num').text(newDataNo + 1);
-        }
-    });
-
-    // 刷新列表播放状态样式
-    refreshList();
+        // 重新编号后续项的 data-no 与显示序号，同时同步内部菜单索引
+        $('.list-item').each(function() {
+            var currentDataNo = parseInt($(this).attr('data-no'));
+            if (!isNaN(currentDataNo) && currentDataNo > index) {
+                var newDataNo = currentDataNo - 1;
+                $(this).attr('data-no', newDataNo);
+                $(this).find('.list-num').text(newDataNo + 1);
+                // 更新操作菜单的索引，确保点击菜单时索引正确
+                $(this).find('.list-menu').attr('data-no', newDataNo);
+            }
+        });
+    }
 
     // 如果列表已经空了，清理状态与UI
     if (musicList[1].item.length === 0) {
@@ -1595,10 +1646,10 @@ function removePlayingItem(index, options) {
         return true;
     }
 
-    // 维护 rem.playid
+    // 维护 rem.playid（先调整索引，再刷新高亮，避免显示与实际不一致）
     if (rem.playid !== undefined) {
         if (rem.playid > index) {
-            // 被移除的是正在播放项之前的某一项 -> 当前播放索引左移
+            // 被移除的是当前播放项之前的某一项 -> 当前播放索引左移
             rem.playid = rem.playid - 1;
         } else if (rem.playid === index) {
             // 移除了当前正在播放项 -> 当前索引保持不变，等于下一首
@@ -1610,6 +1661,9 @@ function removePlayingItem(index, options) {
             }
         }
     }
+
+    // 刷新列表播放状态样式（在索引更新之后执行）
+    refreshList();
 
     return true;
 }

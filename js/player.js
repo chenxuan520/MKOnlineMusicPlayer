@@ -180,13 +180,15 @@ function audioErr() {
             // 移除UI中对应的列表项
             $('.list-item[data-no="' + rem.playid + '"]').remove();
 
-            // 重新编号列表项和更新data-no属性（因为移除了一个项目，后续项的索引都变了）
+            // 重新编号列表项和更新 data-no 属性（因为移除了一个项目，后续项的索引都变了）
             $('.list-item').each(function() {
                 var currentDataNo = parseInt($(this).attr('data-no'));
-                if (currentDataNo > rem.playid) {  // Only update items that were originally after the removed position
+                if (!isNaN(currentDataNo) && currentDataNo > rem.playid) {  // 仅更新原来在被移除项之后的条目
                     var newDataNo = currentDataNo - 1;
-                    $(this).attr('data-no', newDataNo); // Decrement their index by 1
-                    $(this).find('.list-num').text(newDataNo + 1);  // Display number is new index + 1
+                    $(this).attr('data-no', newDataNo); // 列表项索引减 1
+                    $(this).find('.list-num').text(newDataNo + 1);  // 显示编号 = 新索引 + 1
+                    // 同步更新内部菜单的索引，避免鼠标点击菜单时出现错位
+                    $(this).find('.list-menu').attr('data-no', newDataNo);
                 }
             });
 
@@ -296,6 +298,16 @@ function audioPlay() {
     }
     // 标题滚动
     titleFlash(msg);
+
+    // 确保当前界面已生成的菜单补充“不喜欢/跳过”按钮（参考收藏按钮一致性）
+    try {
+        $(".music-list .list-menu").each(function(){
+            var $menu = $(this);
+            if ($menu.find('.icon-skip').length === 0) {
+                $menu.append('<span class="list-icon icon-skip" data-function="skip" title="不喜欢，跳过并从正在播放列表移除"></span>');
+            }
+        });
+    } catch(e) {}
 }
 // 标题滚动
 function titleFlash(msg) {
@@ -547,13 +559,15 @@ function play(music) {
                     // 移除UI中对应的列表项
                     $('.list-item[data-no="' + rem.playid + '"]').remove();
 
-                    // 重新编号列表项和更新data-no属性（因为移除了一个项目，后续项的索引都变了）
+                    // 重新编号列表项和更新 data-no 属性（因为移除了一个项目，后续项的索引都变了）
                     $('.list-item').each(function() {
                         var currentDataNo = parseInt($(this).attr('data-no'));
-                        if (currentDataNo > rem.playid) {  // Only update items that were originally after the removed position
+                        if (!isNaN(currentDataNo) && currentDataNo > rem.playid) {  // 仅更新原来在被移除项之后的条目
                             var newDataNo = currentDataNo - 1;
-                            $(this).attr('data-no', newDataNo); // Decrement their index by 1
-                            $(this).find('.list-num').text(newDataNo + 1);  // Display number is new index + 1
+                            $(this).attr('data-no', newDataNo); // 列表项索引减 1
+                            $(this).find('.list-num').text(newDataNo + 1);  // 显示编号 = 新索引 + 1
+                            // 同步更新内部菜单的索引，避免鼠标点击菜单时出现错位
+                            $(this).find('.list-menu').attr('data-no', newDataNo);
                         }
                     });
 
