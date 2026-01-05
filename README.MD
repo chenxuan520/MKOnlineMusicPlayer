@@ -1,4 +1,4 @@
-MKOnlineMusicPlayer（MxuePlay 优化版）
+MKOnlineMusicPlayer（ChenPlay 优化版）
 ========
 基于 `Meting` 的在线音乐播放器，支持搜索、播放、下载、歌词同步、收藏与播放历史，已集成“智能推荐歌单”。前端采用响应式设计，PC/移动端均可良好使用。
 
@@ -17,8 +17,6 @@ MKOnlineMusicPlayer（MxuePlay 优化版）
 - 下载歌曲/歌词(电脑端)：![下载功能](https://user-images.githubusercontent.com/35069089/63268311-785a2e80-c2c6-11e9-858a-a5629d80731a.png)
 
 ### 相关链接
-- 原版在线演示：<http://lab.mkblog.cn/music/>
-- 原版介绍：<http://mkblog.cn/1060/>
 - 原版仓库：<https://github.com/mengkunsoft/MKOnlineMusicPlayer>
 - 优化版仓库：<https://github.com/chenxuan520/MKOnlineMusicPlayer>
 
@@ -65,5 +63,5 @@ MKOnlineMusicPlayer（MxuePlay 优化版）
 - 依赖：jQuery、Meting、layui、mCustomScrollbar、background-blur 等。
 
 ### 更新与计划
-- 已新增：智能推荐、VIP过滤/跳过、热评显示、收藏导入导出等。
+- 已新增：智能llm推荐、VIP过滤/跳过、热评显示、设置控制、收藏导入导出等。
 - 后续按需迭代，欢迎提 Issue。
