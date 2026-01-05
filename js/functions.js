@@ -684,7 +684,7 @@ function settingsBox() {
                 }
             });
 
-            // 监听图片测试
+            // 监听图片测试（自定义背景也保持高斯模糊一致性）
             $(layero).find('#test-bg-btn').click(function(){
                 var url = $(layero).find("input[name='bg-url']").val();
                 if(!url) {
@@ -697,9 +697,9 @@ function settingsBox() {
                 var img = new Image();
                 img.onload = function(){
                     layer.close(loadIdx);
-                    layer.msg('图片有效，已临时预览');
-                    // 预览图片，自定义图片默认不虚化
-                    updateBackground(url, false);
+                    layer.msg('图片有效，已临时预览（含模糊效果）');
+                    // 预览图片，保持与页面一致的模糊效果
+                    updateBackground(url, true);
                 };
                 img.onerror = function(){
                     layer.close(loadIdx);
@@ -752,9 +752,9 @@ function settingsBox() {
                 playerSavedata('recommendToken', mkPlayer.recommendToken);
                 playerSavedata('bgConfig', mkPlayer.bgConfig);
 
-                // 应用背景更改
+                // 应用背景更改（自定义背景也启用模糊以保持一致性）
                 if (newBgType === 'custom') {
-                    updateBackground(newBgUrl, false); // 自定义不虚化
+                    updateBackground(newBgUrl, true); // 自定义也模糊
                 } else {
                     // 如果切回默认，且当前有播放歌曲，则恢复歌曲封面
                     if (rem.playlist !== undefined && rem.playid !== undefined) {
@@ -778,10 +778,10 @@ function settingsBox() {
             });
         },
         end: function() {
-            // 如果未保存，则恢复之前的背景设置
+            // 如果未保存，则恢复之前的背景设置（保持模糊一致性）
             if (!isSaved) {
                 if (initialBgConfig.type === 'custom' && initialBgConfig.url) {
-                    updateBackground(initialBgConfig.url, false);
+                    updateBackground(initialBgConfig.url, true);
                 } else {
                     // 恢复默认背景
                     if (rem.playlist !== undefined && rem.playid !== undefined && musicList[rem.playlist] && musicList[rem.playlist].item) {
