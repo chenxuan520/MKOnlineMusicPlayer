@@ -225,7 +225,7 @@
 
 <!-- 设置弹窗 -->
 <script type="text/html" id="layer-settings-box">
-    <div id="layer-settings-content" style="padding: 20px;">
+    <div id="layer-settings-content" style="padding: 20px; max-height: calc(100vh - 160px); overflow-y: auto;">
         <form class="layui-form" action="">
             <fieldset class="layui-elem-field layui-field-title" style="margin-top: 0;">
                 <legend style="font-size: 14px;">基础设置</legend>
@@ -235,6 +235,15 @@
                     <label class="layui-form-label" style="float: none; padding: 9px 0; text-align: left; width: auto;">启动时自动加载列表</label>
                     <div class="layui-input-block" style="margin-left: 0; min-height: auto;">
                         <input type="checkbox" name="auto-load" lay-skin="switch" lay-text="ON|OFF">
+                    </div>
+                </div>
+            </div>
+
+            <div class="layui-form-item">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label class="layui-form-label" style="float: none; padding: 9px 0; text-align: left; width: auto;">加载全部列表</label>
+                    <div class="layui-input-block" style="margin-left: 0; min-height: auto;">
+                        <input type="checkbox" name="load-all-sheets" lay-skin="switch" lay-text="ON|OFF">
                     </div>
                 </div>
             </div>

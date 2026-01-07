@@ -25,6 +25,7 @@ var mkPlayer = {
     filterVip: true, // 默认开启 VIP 过滤
     skipVip: true, // 默认开启自动跳过 VIP 歌曲 (短歌曲)
     autoLoad: false, // 默认关闭自动加载列表
+    loadAllSheets: false, // 默认关闭：仅加载前6张列表（除系统/推荐外）
     hotCommentsOnly: false, // 默认关闭只看热门评论
     recommendDomain: '', // 推荐服务域名
     recommendToken: '', // 推荐服务 Token
@@ -51,6 +52,12 @@ $(function() {
     var storedAutoLoad = playerReaddata('autoLoad');
     if (storedAutoLoad !== null && storedAutoLoad !== undefined) {
         mkPlayer.autoLoad = storedAutoLoad;
+    }
+
+    // 读取本地存储的 加载全部列表设置
+    var storedLoadAllSheets = playerReaddata('loadAllSheets');
+    if (storedLoadAllSheets !== null && storedLoadAllSheets !== undefined) {
+        mkPlayer.loadAllSheets = storedLoadAllSheets;
     }
 
     // 读取本地存储的 只看热门评论设置

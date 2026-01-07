@@ -616,6 +616,13 @@ function settingsBox() {
                 $(layero).find("input[name='auto-load']").prop("checked", false);
             }
 
+            // 渲染“加载全部列表”开关（默认关闭）
+            if (mkPlayer.loadAllSheets) {
+                $(layero).find("input[name='load-all-sheets']").prop("checked", true);
+            } else {
+                $(layero).find("input[name='load-all-sheets']").prop("checked", false);
+            }
+
             if (mkPlayer.hotCommentsOnly) {
                 $(layero).find("input[name='hot-comments-only']").prop("checked", true);
             } else {
@@ -712,6 +719,7 @@ function settingsBox() {
             form.on('submit(settings-submit)', function(data){
                 // 获取开关状态
                 var isAutoLoad = $(layero).find("input[name='auto-load']").prop("checked");
+                var isLoadAllSheets = $(layero).find("input[name='load-all-sheets']").prop("checked");
                 var isHotCommentsOnly = $(layero).find("input[name='hot-comments-only']").prop("checked");
                 var isFilterVip = $(layero).find("input[name='filter-vip']").prop("checked");
                 var isSkipVip = $(layero).find("input[name='skip-vip']").prop("checked");
@@ -732,6 +740,7 @@ function settingsBox() {
 
                 // 更新全局配置
                 mkPlayer.autoLoad = isAutoLoad;
+                mkPlayer.loadAllSheets = isLoadAllSheets;
                 mkPlayer.hotCommentsOnly = isHotCommentsOnly;
                 mkPlayer.filterVip = isFilterVip;
                 mkPlayer.skipVip = isSkipVip;
@@ -745,12 +754,24 @@ function settingsBox() {
 
                 // 保存到本地存储
                 playerSavedata('autoLoad', mkPlayer.autoLoad);
+                playerSavedata('loadAllSheets', mkPlayer.loadAllSheets);
                 playerSavedata('hotCommentsOnly', mkPlayer.hotCommentsOnly);
                 playerSavedata('filterVip', mkPlayer.filterVip);
                 playerSavedata('skipVip', mkPlayer.skipVip);
                 playerSavedata('recommendDomain', mkPlayer.recommendDomain);
                 playerSavedata('recommendToken', mkPlayer.recommendToken);
                 playerSavedata('bgConfig', mkPlayer.bgConfig);
+
+                // 根据“加载全部列表”开关刷新歌单侧边栏渲染
+                try {
+                    clearSheet();
+                    rem.sheetLoaded = false;
+                    rem.initSheetList();
+                } catch (e) {
+                    if (mkPlayer.debug) {
+                        console.warn('刷新歌单列表失败：', e);
+                    }
+                }
 
                 // 应用背景更改（自定义背景也启用模糊以保持一致性）
                 if (newBgType === 'custom') {
@@ -1871,10 +1892,19 @@ rem.initSheetList = function() {
         addSheet(recommendIndex, musicList[recommendIndex].name, musicList[recommendIndex].cover);
     }
 
+    // 限制显示的非系统/推荐歌单数量（根据设置决定是否全部加载）
+    var maxSheets = mkPlayer.loadAllSheets ? Number.MAX_SAFE_INTEGER : 7;
+    var addedCount = 0;
+
     // 显示所有的歌单（从系统歌单开始），跳过已添加的智能推荐以避免重复
     for(var i=3; i<musicList.length; i++) {
         if (i === recommendIndex) continue; // 已优先添加
         if (!musicList[i]) continue;
+
+        // 达到限制数量则停止追加
+        if (addedCount >= maxSheets) {
+            break;
+        }
 
         // 列表不是用户列表，并且信息为空，需要ajax读取列表
         if(!musicList[i].creatorID && (musicList[i].item == undefined || (i>2 && musicList[i].item.length == 0))) {
@@ -1892,6 +1922,7 @@ rem.initSheetList = function() {
 
         // 在前端显示出来
         addSheet(i, musicList[i].name, musicList[i].cover);
+        addedCount++;
     }
 
     // 登陆了，但歌单又没有，说明是在刷新歌单
