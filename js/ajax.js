@@ -300,12 +300,18 @@ function ajaxPlayList(lid, id, callback) {
 }
 
 // ajax加载歌词
-// 参数：音乐ID，回调函数
-function ajaxLyric(music, callback) {
+// 参数：音乐对象，回调函数
+// 增加一次自动重试机制：请求失败后延时重试 1 次
+function ajaxLyric(music, callback, retry) {
     lyricTip('歌词加载中...');
-    
-    if(!music.lyric_id) callback('');  // 没有歌词ID，直接返回
-    
+
+    // 如果没有歌词ID，则提示无歌词并清理状态
+    if(!music.lyric_id) {
+        rem.lyric = '';
+        lyricTip('没有歌词');
+        return;
+    }
+
     $.ajax({
         type: mkPlayer.method,
         url: mkPlayer.api,
@@ -318,15 +324,27 @@ function ajaxLyric(music, callback) {
             }
             
             if (jsonData.lyric) {
-                callback(jsonData.lyric, music.lyric_id);    // 回调函数
+                // 使用歌曲ID进行幂等性校验，避免与 lyric_id 不一致导致的回调丢弃
+                callback(jsonData.lyric, music.id);
             } else {
-                callback('', music.lyric_id);    // 回调函数
+                // 成功但无歌词：明确提示“没有歌词”，并清理状态
+                rem.lyric = '';
+                lyricTip('没有歌词');
             }
         },   //success
         error: function(XMLHttpRequest, textStatus, errorThrown) {
             layer.msg('歌词读取失败 - ' + XMLHttpRequest.status);
             console.error(XMLHttpRequest + textStatus + errorThrown);
-            callback('', music.lyric_id);    // 回调函数
+            // 失败时自动重试一次（仅重试 1 次）
+            if (!retry) {
+                setTimeout(function(){
+                    ajaxLyric(music, callback, true);
+                }, 800);
+            } else {
+                // 二次失败：明确提示请求失败，并清理状态
+                rem.lyric = '';
+                lyricTip('歌词读取失败');
+            }
         }   // error   
     });//ajax
 }

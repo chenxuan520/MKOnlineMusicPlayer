@@ -49,6 +49,36 @@ $(function(){
         if (navigator.userAgent !== rem.userAgent) {
             location.reload();
         }
+
+        // 修复关闭 F12（开发者工具）后右侧空白：
+        // 背景模糊层在窗口尺寸变化后需要重新计算与填充
+        // 这里做轻量级防抖重绘，避免频繁触发导致卡顿
+        try {
+            if (rem.resizeTimer) {
+                clearTimeout(rem.resizeTimer);
+            }
+            rem.resizeTimer = setTimeout(function(){
+                // 仅在启用了封面背景时重绘
+                if ((mkPlayer.coverbg === true && !rem.isMobile) || (mkPlayer.mcoverbg === true && rem.isMobile)) {
+                    var bgUrl = null;
+                    if (mkPlayer.bgConfig && mkPlayer.bgConfig.type === 'custom' && mkPlayer.bgConfig.url) {
+                        bgUrl = mkPlayer.bgConfig.url;
+                    } else if (rem.playlist !== undefined && rem.playid !== undefined && musicList[rem.playlist] && musicList[rem.playlist].item) {
+                        var currentMusic = musicList[rem.playlist].item[rem.playid];
+                        if (currentMusic && currentMusic.pic) {
+                            bgUrl = currentMusic.pic;
+                        }
+                    }
+                    if (!bgUrl) bgUrl = "images/player_cover.png";
+                    // 保持与页面一致的高斯模糊效果
+                    updateBackground(bgUrl, true);
+                }
+            }, 200);
+        } catch (e) {
+            if (mkPlayer.debug) {
+                console.warn('背景重绘失败（resize）：', e);
+            }
+        }
     }
 
     initProgress();     // 初始化音量条、进度条（进度条初始化要在 Audio 前，别问我为什么……）
@@ -1019,7 +1049,6 @@ function thisDownloadLrc (obj) {
         error: function(XMLHttpRequest, textStatus, errorThrown) {
             layer.msg('歌词读取失败 - ' + XMLHttpRequest.status);
             console.error(XMLHttpRequest + textStatus + errorThrown);
-            callback('', music.lyric_id);    // 回调函数
         }   // error
     });//ajax
 }
