@@ -250,7 +250,13 @@ function pause() {
             }
             // For collections, the music is already added to musicList[1] by double-click handler
 
-            listClick(0);
+            // 优先使用上次播放的索引进行自动播放
+            var startIndex = playerReaddata('playid');
+            if (typeof startIndex !== 'number' || isNaN(startIndex)) startIndex = 0;
+            if (!musicList[1] || !musicList[1].item || startIndex < 0 || startIndex >= musicList[1].item.length) {
+                startIndex = 0;
+            }
+            listClick(startIndex);
         }
         rem.audio[0].play();
     }
@@ -478,6 +484,8 @@ function playList(id) {
 
     // 记录正在播放的歌曲在正在播放列表中的 id
     rem.playid = id;
+    // 记录最后一次播放的索引，便于刷新后自动定位
+    try { playerSavedata('playid', rem.playid); } catch(e) {}
 
     // 强制将歌曲url清空，以防止歌曲url过期
     musicList[1].item[id].url = "";

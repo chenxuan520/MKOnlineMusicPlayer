@@ -1532,6 +1532,34 @@ function listToTop() {
     }
 }
 
+// 滚动到上次播放的歌曲位置（不自动播放）
+function scrollToLastPlayed(index) {
+    try {
+        var idx = (typeof index === 'number') ? index : playerReaddata('playid');
+        if (idx === null || idx === undefined) return;
+        if (!musicList[1] || !musicList[1].item || idx < 0 || idx >= musicList[1].item.length) return;
+
+        // 等待列表元素渲染完成后再滚动
+        setTimeout(function(){
+            var $target = $('.list-item[data-no="' + idx + '"]');
+            if(!$target.length) return;
+
+            if(rem.isMobile) {
+                var $container = $('#main-list');
+                var top = $target.position().top + $container.scrollTop() - 80; // 微调让目标不贴边
+                $container.animate({scrollTop: top}, 200);
+            } else {
+                var top = $target.position().top; // 相对 mCSB_container 的位置
+                $("#main-list").mCustomScrollbar("scrollTo", top);
+            }
+        }, 0);
+    } catch(e) {
+        if (mkPlayer.debug) {
+            console.warn('滚动到上次播放位置失败：', e);
+        }
+    }
+}
+
 // 向列表中加入列表头
 function addListhead() {
     var html = '<div class="list-item list-head">' +
@@ -1876,6 +1904,8 @@ function initList() {
     if (mkPlayer.autoLoad) {
         rem.initSheetList(); // 渲染其余歌单列表
         if(musicList[mkPlayer.defaultlist].isloading !== true) loadList(mkPlayer.defaultlist);
+        // 加载完成后，自动定位到上次播放的歌曲位置
+        if (mkPlayer.defaultlist === 1) scrollToLastPlayed();
         rem.sheetLoaded = true;
     } else {
         rem.sheetLoaded = false;
@@ -1887,6 +1917,8 @@ function initList() {
         // 确保加载当前默认列表的内容（通常是正在播放）
         mkPlayer.defaultlist = 1; // 强制默认为正在播放列表
         loadList(mkPlayer.defaultlist);
+        // 加载完成后，自动定位到上次播放的歌曲位置
+        scrollToLastPlayed();
     }
 }
 
