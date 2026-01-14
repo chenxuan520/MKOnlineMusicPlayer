@@ -2085,10 +2085,15 @@ function showCommentModal(index) {
     }
 
     var comment = rem.comments[index];
-    var avatar = comment.user.avatar || "images/avatar.png";
-    var username = comment.user.name || "匿名用户";
+    if (!comment) {
+        layer.msg('暂无评论数据');
+        return;
+    }
+    var user = comment.user || {};
+    var avatar = user.avatar || "images/avatar.png";
+    var username = user.name || "匿名用户";
     var content = comment.content || "暂无评论内容";
-    var time = formatDate(comment.time * 1000);
+    var time = formatDate(comment.time ? comment.time * 1000 : null);
 
     // 判断当前评论是热门评论还是普通评论
     var isHotComment = false;
@@ -2298,6 +2303,18 @@ function comments(obj) {
                 rem.comments = rem.comments.slice(0, 150);
             }
 
+            // 过滤无效评论项，防止数组中出现 undefined/null 导致后续读取报错
+            rem.comments = rem.comments.filter(function(c){
+                return c && (typeof c.content === 'string' || (c.content && c.content.toString));
+            });
+
+            // 无有效评论直接返回
+            if (!rem.comments || rem.comments.length === 0) {
+                $(".banner_text span").text("暂无评论数据");
+                $(".banner_text img").hide();
+                return;
+            }
+
             // 更新顶部链接，但不添加跳转功能（仅用于显示）
             if (obj.source === 'netease') {
                 $(".banner_text a").attr("href", "https://music.163.com/#/song?id="+obj.id+"#comment-box");
@@ -2329,10 +2346,12 @@ function comments(obj) {
                 // 保存当前评论索引
                 rem.currentCommentIndex = commentsIndex;
 
-                var avatarSrc = (rem.comments[commentsIndex].user.avatar ? rem.comments[commentsIndex].user.avatar : "images/avatar.png");
+                // 取当前评论并做好空值保护
+                var currentComment = rem.comments && rem.comments[commentsIndex] ? rem.comments[commentsIndex] : null;
+                var avatarSrc = (currentComment && currentComment.user && currentComment.user.avatar) ? currentComment.user.avatar : "images/avatar.png";
 
-                // 立即更新文字内容
-                $(".banner_text span").text(rem.comments[commentsIndex].content);
+                // 立即更新文字内容（做好空值保护）
+                $(".banner_text span").text(currentComment && currentComment.content ? currentComment.content : "");
                 $(".banner_text img").show().attr("src", avatarSrc);
 
                 // 设置定时器切换到下一个评论，不依赖于图片加载
