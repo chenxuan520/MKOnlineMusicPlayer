@@ -14,11 +14,22 @@ function lyricTip(str) {
 
 // 歌曲加载完后的回调函数
 // 参数：歌词源文件
-function lyricCallback(str, id) {
+function lyricCallback(str, id, lyricId) {
     if(rem.playlist === undefined || rem.playid === undefined || 
        !musicList[rem.playlist] || !musicList[rem.playlist].item || 
-       !musicList[rem.playlist].item[rem.playid] ||
-       id !== musicList[rem.playlist].item[rem.playid].id) return;  // 返回的歌词不是当前这首歌的，跳过
+       !musicList[rem.playlist].item[rem.playid]) return;
+
+    // 返回的歌词不是当前这首歌的，跳过
+    // 兼容不同来源/缓存导致的 id 类型差异（数字 vs 字符串），并允许用 lyric_id 进行校验。
+    var cur = musicList[rem.playlist].item[rem.playid];
+    var curSongId = (cur && cur.id !== undefined && cur.id !== null) ? String(cur.id) : '';
+    var cbSongId = (id !== undefined && id !== null) ? String(id) : '';
+    var curLyricId = (cur && cur.lyric_id !== undefined && cur.lyric_id !== null) ? String(cur.lyric_id) : '';
+    var cbLyricId = (lyricId !== undefined && lyricId !== null) ? String(lyricId) : '';
+
+    var matchBySongId = cbSongId && curSongId && cbSongId === curSongId;
+    var matchByLyricId = cbLyricId && curLyricId && cbLyricId === curLyricId;
+    if (!matchBySongId && !matchByLyricId) return;
     
     rem.lyric = parseLyric(str);    // 解析获取到的歌词
     

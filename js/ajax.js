@@ -317,6 +317,8 @@ function ajaxLyric(music, callback, retry) {
         url: mkPlayer.api,
         data: "types=lyric&id=" + music.lyric_id + "&source=" + music.source,
         dataType: mkPlayer.dataType,
+        // 避免接口长时间无响应导致一直卡在“歌词加载中...”
+        timeout: 20000,
         success: function(jsonData){
             // 调试信息输出
             if (mkPlayer.debug) {
@@ -324,8 +326,8 @@ function ajaxLyric(music, callback, retry) {
             }
             
             if (jsonData.lyric) {
-                // 使用歌曲ID进行幂等性校验，避免与 lyric_id 不一致导致的回调丢弃
-                callback(jsonData.lyric, music.id);
+                // 传入歌曲ID + 歌词ID：用于回调侧做更稳健的幂等性校验（兼容不同来源的类型差异）
+                callback(jsonData.lyric, music.id, music.lyric_id);
             } else {
                 // 成功但无歌词：明确提示“没有歌词”，并清理状态
                 rem.lyric = '';
