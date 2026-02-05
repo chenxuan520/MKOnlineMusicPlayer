@@ -263,6 +263,29 @@ function pause() {
 }
 
 // 循环顺序
+// 参数：order 1=单曲循环 2=列表循环 3=随机播放
+// 说明：仅负责刷新按钮样式与提示文案（不弹 toast）
+function applyOrderUI(order) {
+    var orderDiv = $(".btn-order");
+    orderDiv.removeClass();
+
+    switch(order) {
+        case 1:
+            orderDiv.addClass("player-btn btn-order btn-order-single");
+            orderDiv.attr("title", "单曲循环");
+            break;
+        case 3:
+            orderDiv.addClass("player-btn btn-order btn-order-random");
+            orderDiv.attr("title", "随机播放");
+            break;
+        case 2:
+        default:
+            orderDiv.addClass("player-btn btn-order btn-order-list");
+            orderDiv.attr("title", "列表循环");
+            break;
+    }
+}
+
 function orderChange() {
     var orderDiv = $(".btn-order");
     orderDiv.removeClass();
@@ -288,6 +311,11 @@ function orderChange() {
             layer.msg("随机播放");
             rem.order = 3;
     }
+
+    // 持久化播放方式：刷新页面后保持一致
+    try {
+        playerSavedata('order', rem.order);
+    } catch(e) {}
 }
 
 // 播放

@@ -84,6 +84,27 @@ $(function(){
     initProgress();     // 初始化音量条、进度条（进度条初始化要在 Audio 前，别问我为什么……）
     initAudio();    // 初始化 audio 标签，事件绑定
 
+    // 恢复本地存储的播放方式（顺序/随机/单曲），避免刷新后重置为默认
+    try {
+        var storedOrder = playerReaddata('order');
+        // 兼容旧版本可能存成字符串的情况
+        if (typeof storedOrder === 'string') {
+            var parsed = parseInt(storedOrder, 10);
+            storedOrder = isNaN(parsed) ? storedOrder : parsed;
+        }
+        if (storedOrder === 1 || storedOrder === 2 || storedOrder === 3) {
+            rem.order = storedOrder;
+        } else {
+            // 默认：列表循环（顺序）
+            rem.order = 2;
+        }
+        if (typeof applyOrderUI === 'function') {
+            applyOrderUI(rem.order);
+        }
+    } catch (e) {
+        // ignore
+    }
+
 
     if(rem.isMobile) {  // 加了滚动条插件和没加滚动条插件所操作的对象是不一样的
         rem.sheetList = $("#sheet");
