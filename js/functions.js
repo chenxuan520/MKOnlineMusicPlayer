@@ -700,6 +700,15 @@ function settingsBox() {
             }
             $(layero).find("input[name='recommend-token']").val(mkPlayer.recommendToken);
 
+            // 回填“参考收藏数量”（默认沿用历史行为：20）
+            try {
+                var favCount = parseInt(mkPlayer.recommendFavCount, 10);
+                if (isNaN(favCount) || favCount <= 0) favCount = 20;
+                $(layero).find("input[name='recommend-fav-count']").val(favCount);
+            } catch (e) {
+                $(layero).find("input[name='recommend-fav-count']").val(20);
+            }
+
             // 渲染背景设置状态
             var bgType = (mkPlayer.bgConfig && mkPlayer.bgConfig.type) || 'default';
             $(layero).find("input[name='bg-type'][value='" + bgType + "']").prop("checked", true);
@@ -778,6 +787,11 @@ function settingsBox() {
                 // 获取推荐服务设置
                 var recommendDomain = $(layero).find("input[name='recommend-domain']").val();
                 var recommendToken = $(layero).find("input[name='recommend-token']").val();
+                var recommendFavCountRaw = $(layero).find("input[name='recommend-fav-count']").val();
+                var recommendFavCount = parseInt(recommendFavCountRaw, 10);
+                if (isNaN(recommendFavCount) || recommendFavCount <= 0) {
+                    recommendFavCount = 20;
+                }
 
                 // 获取背景设置
                 var newBgType = $(layero).find("input[name='bg-type']:checked").val();
@@ -797,6 +811,7 @@ function settingsBox() {
                 mkPlayer.skipVip = isSkipVip;
                 mkPlayer.recommendDomain = recommendDomain;
                 mkPlayer.recommendToken = recommendToken;
+                mkPlayer.recommendFavCount = recommendFavCount;
 
                 mkPlayer.bgConfig = {
                     type: newBgType,
@@ -811,6 +826,7 @@ function settingsBox() {
                 playerSavedata('skipVip', mkPlayer.skipVip);
                 playerSavedata('recommendDomain', mkPlayer.recommendDomain);
                 playerSavedata('recommendToken', mkPlayer.recommendToken);
+                playerSavedata('recommendFavCount', mkPlayer.recommendFavCount);
                 playerSavedata('bgConfig', mkPlayer.bgConfig);
 
                 // 根据“加载全部列表”开关刷新歌单侧边栏渲染

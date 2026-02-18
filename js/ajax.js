@@ -486,23 +486,37 @@ function loadRecommendList(listIndex) {
         success: function(jsonData) {
             var favorites = [];
             if (jsonData.success && jsonData.collections) {
-                // 随机提取20首收藏的歌曲名作为推荐参数
-                var collectionList = jsonData.collections;
-                
-                if (collectionList.length > 20) {
-                    // Fisher-Yates Shuffle 随机选取前20个
-                    for (var i = 0; i < 20; i++) {
-                        var j = i + Math.floor(Math.random() * (collectionList.length - i));
-                        var temp = collectionList[i];
-                        collectionList[i] = collectionList[j];
-                        collectionList[j] = temp;
-                        
-                        favorites.push(collectionList[i].name);
-                    }
-                } else {
-                    // 数量不足20，直接全部使用
-                    for (var i = 0; i < collectionList.length; i++) {
-                        favorites.push(collectionList[i].name);
+                // 根据设置决定“参考收藏数量”（默认沿用历史行为：20）
+                var targetCount = parseInt(mkPlayer.recommendFavCount, 10);
+                if (isNaN(targetCount) || targetCount <= 0) targetCount = 20;
+
+                // 使用副本避免污染原始数据
+                var collectionList = (jsonData.collections || []).slice();
+                var total = collectionList.length;
+
+                // Fisher-Yates Shuffle（全量打乱）
+                for (var s = total - 1; s > 0; s--) {
+                    var r = Math.floor(Math.random() * (s + 1));
+                    var t = collectionList[s];
+                    collectionList[s] = collectionList[r];
+                    collectionList[r] = t;
+                }
+
+                if (total > 0) {
+                    if (targetCount < total) {
+                        // 小于收藏总数：随机抽取 targetCount 条
+                        for (var i = 0; i < targetCount; i++) {
+                            if (collectionList[i] && collectionList[i].name) {
+                                favorites.push(collectionList[i].name);
+                            }
+                        }
+                    } else {
+                        // 大于等于收藏总数：收藏打乱后全部传递
+                        for (var k = 0; k < total; k++) {
+                            if (collectionList[k] && collectionList[k].name) {
+                                favorites.push(collectionList[k].name);
+                            }
+                        }
                     }
                 }
             }

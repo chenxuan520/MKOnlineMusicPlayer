@@ -29,6 +29,7 @@ var mkPlayer = {
     hotCommentsOnly: false, // 默认关闭只看热门评论
     recommendDomain: '', // 推荐服务域名
     recommendToken: '', // 推荐服务 Token
+    recommendFavCount: 20, // 推荐时参考的收藏数量（默认沿用历史行为：20）
     bgConfig: { type: 'default', url: '' } // 背景设置配置
 };
 
@@ -74,6 +75,15 @@ $(function() {
     var storedRecommendToken = playerReaddata('recommendToken');
     if (storedRecommendToken !== null && storedRecommendToken !== undefined) {
         mkPlayer.recommendToken = storedRecommendToken;
+    }
+
+    // 读取推荐时参考的收藏数量
+    var storedRecommendFavCount = playerReaddata('recommendFavCount');
+    if (storedRecommendFavCount !== null && storedRecommendFavCount !== undefined) {
+        var parsedFavCount = parseInt(storedRecommendFavCount, 10);
+        if (!isNaN(parsedFavCount) && parsedFavCount > 0) {
+            mkPlayer.recommendFavCount = parsedFavCount;
+        }
     }
 
     // 读取本地存储的背景设置
