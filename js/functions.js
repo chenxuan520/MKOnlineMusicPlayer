@@ -622,6 +622,13 @@ function musicInfo(list, index) {
     '<span style="margin-left: 10px" class="info-btn" onclick="thisDownloadPic(this)" data-list="' + list + '" data-index="' + index + '">下载封面</span>' +
     '<span style="margin-left: 10px" class="info-btn" onclick="thisShare(this)" data-list="' + list + '" data-index="' + index + '">外链</span>';
 
+    // 仅在查看“当前正在播放的歌曲”时提供歌词刷新入口，避免对非当前歌曲造成误解
+    // 该按钮单独占一行，避免在同一行被挤压换行导致显示难看
+    if(list == rem.playlist && index == rem.playid) {
+        tempStr += '<br><span class="info-title">歌词：</span>' +
+        '<span class="info-btn" onclick="thisReloadLyric(this)" data-list="' + list + '" data-index="' + index + '">重新加载歌词</span>';
+    }
+
     layer.open({
         type: 0,
         shade: [0.25,,'#000'],
@@ -644,6 +651,45 @@ function musicInfo(list, index) {
         'url: ""');
         // 'url: "' + music.url + '"');
     }
+}
+
+// 重新加载歌词（用于解决长时间挂起导致一直卡在“歌词加载中...”的问题）
+function thisReloadLyric(obj) {
+    var list = $(obj).data("list");
+    var index = $(obj).data("index");
+
+    // 歌词区只展示当前播放歌曲；非当前歌曲仅提示
+    if(list != rem.playlist || index != rem.playid) {
+        layer.msg('请在当前播放歌曲的信息里操作');
+        return;
+    }
+
+    if(rem.playlist === undefined || rem.playid === undefined || !musicList[rem.playlist] || !musicList[rem.playlist].item) {
+        layer.msg('当前播放信息异常');
+        return;
+    }
+
+    var music = musicList[rem.playlist].item[rem.playid];
+    if(!music) {
+        layer.msg('歌曲信息获取失败');
+        return;
+    }
+
+    // 先清理状态，再触发一次强制刷新
+    rem.lyric = '';
+    rem.lastLyric = -1;
+    lyricTip('歌词重新加载中...');
+
+    // 第 4 个参数用于强制刷新（追加 cache-busting，并尝试中止前一个歌词请求）
+    // 重新加载完成后，立刻按当前播放进度定位歌词（不必等到下一句歌词时间点）
+    ajaxLyric(music, function(str, id, lyricId){
+        lyricCallback(str, id, lyricId);
+        try {
+            if (rem.audio && rem.audio[0]) {
+                refreshLyric(rem.audio[0].currentTime);
+            }
+        } catch (e) {}
+    }, false, true);
 }
 
 // 展现设置弹窗

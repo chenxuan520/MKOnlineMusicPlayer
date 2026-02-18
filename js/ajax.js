@@ -302,8 +302,8 @@ function ajaxPlayList(lid, id, callback) {
 // ajax加载歌词
 // 参数：音乐对象，回调函数
 // 增加一次自动重试机制：请求失败后延时重试 1 次
-function ajaxLyric(music, callback, retry) {
-    lyricTip('歌词加载中...');
+function ajaxLyric(music, callback, retry, force) {
+    lyricTip(force ? '歌词重新加载中...' : '歌词加载中...');
 
     // 如果没有歌词ID，则提示无歌词并清理状态
     if(!music.lyric_id) {
@@ -312,12 +312,25 @@ function ajaxLyric(music, callback, retry) {
         return;
     }
 
-    $.ajax({
+    // 若存在上一次未完成的歌词请求，先中止，避免长时间挂起导致 UI 一直停留在“加载中”
+    try {
+        if (rem.lyricAjax && rem.lyricAjax.readyState !== 4) {
+            rem.lyricAjax.abort();
+        }
+    } catch (e) {}
+
+    var dataStr = "types=lyric&id=" + music.lyric_id + "&source=" + music.source;
+    if (force) {
+        dataStr += "&_t=" + Date.now();
+    }
+
+    rem.lyricAjax = $.ajax({
         type: mkPlayer.method,
         url: mkPlayer.api,
-        data: "types=lyric&id=" + music.lyric_id + "&source=" + music.source,
+        data: dataStr,
         dataType: mkPlayer.dataType,
-        // 避免接口长时间无响应导致一直卡在“歌词加载中...”
+        cache: false,
+        // 避免接口长时间无响应导致一直卡在“歌词加载中..."
         timeout: 20000,
         success: function(jsonData){
             // 调试信息输出
@@ -335,12 +348,16 @@ function ajaxLyric(music, callback, retry) {
             }
         },   //success
         error: function(XMLHttpRequest, textStatus, errorThrown) {
+            // 主动 abort 的请求不提示失败
+            if (textStatus === 'abort') {
+                return;
+            }
             layer.msg('歌词读取失败 - ' + XMLHttpRequest.status);
             console.error(XMLHttpRequest + textStatus + errorThrown);
             // 失败时自动重试一次（仅重试 1 次）
             if (!retry) {
                 setTimeout(function(){
-                    ajaxLyric(music, callback, true);
+                    ajaxLyric(music, callback, true, force);
                 }, 800);
             } else {
                 // 二次失败：明确提示请求失败，并清理状态
