@@ -461,7 +461,9 @@ $(function(){
             return false;
         }
 
-        musicInfo(rem.playlist, rem.playid);
+        // 当前播放歌曲统一以“正在播放”列表（musicList[1]）为准。
+        // rem.playlist 可能指向来源列表（如歌单/搜索），当播放队列发生插入/移除时会与实际播放索引不一致。
+        musicInfo(1, rem.playid);
     });
 
     // 播放、暂停按钮的处理
@@ -612,8 +614,30 @@ function musicInfo(list, index) {
     '<br><span class="info-title">歌手：</span>' + music.artist +
     '<br><span class="info-title">专辑：</span>' + music.album;
 
-    if(list == rem.playlist && index == rem.playid) {   // 当前正在播放这首歌，那么还可以顺便获取一下时长。。
-        tempStr += '<br><span class="info-title">时长：</span>' + formatTime(rem.audio[0].duration);
+    // 判断该歌曲是否为当前实际播放的歌曲：以“正在播放”队列为准（musicList[1]）
+    var curMusic = null;
+    try {
+        if(rem.playid !== undefined && musicList[1] && musicList[1].item && musicList[1].item[rem.playid]) {
+            curMusic = musicList[1].item[rem.playid];
+        }
+    } catch(e) {}
+    var isCurrent = false;
+    try {
+        if (curMusic && music) {
+            var aId = (curMusic.id !== undefined && curMusic.id !== null) ? String(curMusic.id) : '';
+            var bId = (music.id !== undefined && music.id !== null) ? String(music.id) : '';
+            var aSrc = (curMusic.source !== undefined && curMusic.source !== null) ? String(curMusic.source) : '';
+            var bSrc = (music.source !== undefined && music.source !== null) ? String(music.source) : '';
+            isCurrent = (aId && bId && aId === bId && aSrc === bSrc);
+        }
+    } catch(e) {}
+
+    if(isCurrent) {   // 当前正在播放这首歌，那么还可以顺便获取一下时长。。
+        try {
+            if (rem.audio && rem.audio[0] && isFinite(rem.audio[0].duration)) {
+                tempStr += '<br><span class="info-title">时长：</span>' + formatTime(rem.audio[0].duration);
+            }
+        } catch(e) {}
     }
 
     tempStr += '<br><span class="info-title">操作：</span>' +
@@ -624,9 +648,12 @@ function musicInfo(list, index) {
 
     // 仅在查看“当前正在播放的歌曲”时提供歌词刷新入口，避免对非当前歌曲造成误解
     // 该按钮单独占一行，避免在同一行被挤压换行导致显示难看
-    if(list == rem.playlist && index == rem.playid) {
+    // 注意：重载必须绑定到“正在播放”队列索引，避免来源列表与播放队列索引不一致导致串歌。
+    if(isCurrent) {
+        var curSongId = (curMusic && curMusic.id !== undefined && curMusic.id !== null) ? String(curMusic.id) : '';
+        var curSource = (curMusic && curMusic.source !== undefined && curMusic.source !== null) ? String(curMusic.source) : '';
         tempStr += '<br><span class="info-title">歌词：</span>' +
-        '<span class="info-btn" onclick="thisReloadLyric(this)" data-list="' + list + '" data-index="' + index + '">重新加载歌词</span>';
+        '<span class="info-btn" onclick="thisReloadLyric(this)" data-list="1" data-index="' + rem.playid + '" data-songid="' + curSongId + '" data-source="' + curSource + '">重新加载歌词</span>';
     }
 
     layer.open({
@@ -657,19 +684,42 @@ function musicInfo(list, index) {
 function thisReloadLyric(obj) {
     var list = $(obj).data("list");
     var index = $(obj).data("index");
+    var songId = $(obj).data("songid");
+    var source = $(obj).data("source");
 
     // 歌词区只展示当前播放歌曲；非当前歌曲仅提示
-    if(list != rem.playlist || index != rem.playid) {
-        layer.msg('请在当前播放歌曲的信息里操作');
-        return;
-    }
-
-    if(rem.playlist === undefined || rem.playid === undefined || !musicList[rem.playlist] || !musicList[rem.playlist].item) {
+    // 当前播放歌曲统一以“正在播放”列表（musicList[1]）为准
+    if(rem.playid === undefined || !musicList[1] || !musicList[1].item || !musicList[1].item[rem.playid]) {
         layer.msg('当前播放信息异常');
         return;
     }
 
-    var music = musicList[rem.playlist].item[rem.playid];
+    // 若按钮携带了歌曲标识，则做一次强校验，避免由于 UI/索引错位导致误刷新
+    try {
+        var cur = musicList[1].item[rem.playid];
+        var curSongId = (cur && cur.id !== undefined && cur.id !== null) ? String(cur.id) : '';
+        var curSource = (cur && cur.source !== undefined && cur.source !== null) ? String(cur.source) : '';
+        var btnSongId = (songId !== undefined && songId !== null) ? String(songId) : '';
+        var btnSource = (source !== undefined && source !== null) ? String(source) : '';
+        if (btnSongId && curSongId && btnSongId !== curSongId) {
+            layer.msg('请在当前播放歌曲的信息里操作');
+            return;
+        }
+        if (btnSource && curSource && btnSource !== curSource) {
+            layer.msg('请在当前播放歌曲的信息里操作');
+            return;
+        }
+    } catch(e) {}
+
+    // 兼容旧按钮（只有 data-list/data-index）：要求指向播放队列
+    if(list !== undefined && index !== undefined) {
+        if (parseInt(list, 10) !== 1 || parseInt(index, 10) !== parseInt(rem.playid, 10)) {
+            layer.msg('请在当前播放歌曲的信息里操作');
+            return;
+        }
+    }
+
+    var music = musicList[1].item[rem.playid];
     if(!music) {
         layer.msg('歌曲信息获取失败');
         return;
