@@ -14,14 +14,22 @@ function lyricTip(str) {
 
 // 歌曲加载完后的回调函数
 // 参数：歌词源文件
-function lyricCallback(str, id, lyricId) {
-    if(rem.playlist === undefined || rem.playid === undefined || 
-       !musicList[rem.playlist] || !musicList[rem.playlist].item || 
-       !musicList[rem.playlist].item[rem.playid]) return;
+function lyricCallback(str, id, lyricId, reqToken) {
+    // 歌词区始终以“正在播放”队列为准（musicList[1]）。
+    // 不能依赖 rem.playlist：在搜索插播/收藏等场景下，rem.playlist 可能不是 1，
+    // 导致回包校验取错列表而直接 return，界面就会一直停留在“加载中/重新加载中”。
+    if (rem.playid === undefined || !musicList[1] || !musicList[1].item || !musicList[1].item[rem.playid]) {
+        return;
+    }
+
+    // 若带了请求令牌，则仅允许“最新一次歌词请求”更新 UI
+    if (reqToken && rem.lyricReqToken && String(reqToken) !== String(rem.lyricReqToken)) {
+        return;
+    }
 
     // 返回的歌词不是当前这首歌的，跳过
     // 兼容不同来源/缓存导致的 id 类型差异（数字 vs 字符串），并允许用 lyric_id 进行校验。
-    var cur = musicList[rem.playlist].item[rem.playid];
+    var cur = musicList[1].item[rem.playid];
     var curSongId = (cur && cur.id !== undefined && cur.id !== null) ? String(cur.id) : '';
     var cbSongId = (id !== undefined && id !== null) ? String(id) : '';
     var curLyricId = (cur && cur.lyric_id !== undefined && cur.lyric_id !== null) ? String(cur.lyric_id) : '';
@@ -29,9 +37,24 @@ function lyricCallback(str, id, lyricId) {
 
     var matchBySongId = cbSongId && curSongId && cbSongId === curSongId;
     var matchByLyricId = cbLyricId && curLyricId && cbLyricId === curLyricId;
-    if (!matchBySongId && !matchByLyricId) return;
+    // 兼容部分源（如 kugou hash）大小写差异
+    if (!matchBySongId && cbSongId && curSongId && cbSongId.toLowerCase && curSongId.toLowerCase) {
+        matchBySongId = cbSongId.toLowerCase() === curSongId.toLowerCase();
+    }
+    if (!matchByLyricId && cbLyricId && curLyricId && cbLyricId.toLowerCase && curLyricId.toLowerCase) {
+        matchByLyricId = cbLyricId.toLowerCase() === curLyricId.toLowerCase();
+    }
+    // 当 token 校验通过时，允许跳过 id/lyricId 的严格匹配（避免因为字段类型/大小写等导致 UI 卡住）
+    if (!reqToken && !matchBySongId && !matchByLyricId) return;
     
-    rem.lyric = parseLyric(str);    // 解析获取到的歌词
+    // 解析获取到的歌词（个别歌词行包含未编码的 % 等字符时，decodeURIComponent 可能抛错）
+    try {
+        rem.lyric = parseLyric(str);
+    } catch (e) {
+        rem.lyric = '';
+        lyricTip('歌词解析失败');
+        return false;
+    }
     
     if(rem.lyric === '') {
         lyricTip('没有歌词');
@@ -102,7 +125,13 @@ function parseLyric(lrc) {
     var lyrics = lrc.split("\n");
     var lrcObj = {};
     for(var i=0;i<lyrics.length;i++){
-        var lyric = decodeURIComponent(lyrics[i]);
+        var lyric = lyrics[i];
+        try {
+            lyric = decodeURIComponent(lyrics[i]);
+        } catch (e) {
+            // 保持原始行，避免解析过程直接中断
+            lyric = lyrics[i];
+        }
         var timeReg = /\[\d*:\d*((\.|\:)\d*)*\]/g;
         var timeRegExpArr = lyric.match(timeReg);
         if(!timeRegExpArr)continue;

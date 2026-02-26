@@ -302,7 +302,7 @@ function ajaxPlayList(lid, id, callback) {
 // ajax加载歌词
 // 参数：音乐对象，回调函数
 // 增加一次自动重试机制：请求失败后延时重试 1 次
-function ajaxLyric(music, callback, retry, force) {
+function ajaxLyric(music, callback, retry, force, reqToken) {
     lyricTip(force ? '歌词重新加载中...' : '歌词加载中...');
 
     // 如果没有歌词ID，则提示无歌词并清理状态
@@ -324,6 +324,13 @@ function ajaxLyric(music, callback, retry, force) {
         dataStr += "&_t=" + Date.now();
     }
 
+    // 生成并记录本次歌词请求令牌，用于回调侧避免“回包成功但 UI 仍停留在加载中”的竞态/错配
+    // 说明：token 需要在重试时保持一致，所以允许外部传入
+    if (!reqToken) {
+        reqToken = String(Date.now()) + '_' + String(music.source || '') + '_' + String(music.lyric_id || '') + '_' + String(music.id || '');
+    }
+    rem.lyricReqToken = reqToken;
+
     rem.lyricAjax = $.ajax({
         type: mkPlayer.method,
         url: mkPlayer.api,
@@ -340,7 +347,7 @@ function ajaxLyric(music, callback, retry, force) {
             
             if (jsonData.lyric) {
                 // 传入歌曲ID + 歌词ID：用于回调侧做更稳健的幂等性校验（兼容不同来源的类型差异）
-                callback(jsonData.lyric, music.id, music.lyric_id);
+                callback(jsonData.lyric, music.id, music.lyric_id, reqToken);
             } else {
                 // 成功但无歌词：明确提示“没有歌词”，并清理状态
                 rem.lyric = '';
@@ -357,7 +364,7 @@ function ajaxLyric(music, callback, retry, force) {
             // 失败时自动重试一次（仅重试 1 次）
             if (!retry) {
                 setTimeout(function(){
-                    ajaxLyric(music, callback, true, force);
+                    ajaxLyric(music, callback, true, force, reqToken);
                 }, 800);
             } else {
                 // 二次失败：明确提示请求失败，并清理状态
