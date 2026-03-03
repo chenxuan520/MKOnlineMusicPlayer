@@ -185,55 +185,8 @@ function audioErr() {
         rem.errCount++;     // 记录连续播放失败的歌曲数目
         layer.msg('当前歌曲播放失败，自动播放下一首');
 
-        // 只在"正在播放"列表时从列表中移除这首歌
-        if (rem.dislist === 1 && rem.playid !== undefined && musicList[1] && musicList[1].item && rem.playid < musicList[1].item.length) {
-            // 从播放列表中移除当前歌曲
-            musicList[1].item.splice(rem.playid, 1);
-
-            // 保存更新后的播放列表
-            playerSavedata('playing', musicList[1].item);
-
-            // 更新UI
-            // 移除UI中对应的列表项
-            $('.list-item[data-no="' + rem.playid + '"]').remove();
-
-            // 重新编号列表项和更新 data-no 属性（因为移除了一个项目，后续项的索引都变了）
-            $('.list-item').each(function() {
-                var currentDataNo = parseInt($(this).attr('data-no'));
-                if (!isNaN(currentDataNo) && currentDataNo > rem.playid) {  // 仅更新原来在被移除项之后的条目
-                    var newDataNo = currentDataNo - 1;
-                    $(this).attr('data-no', newDataNo); // 列表项索引减 1
-                    $(this).find('.list-num').text(newDataNo + 1);  // 显示编号 = 新索引 + 1
-                    // 同步更新内部菜单的索引，避免鼠标点击菜单时出现错位
-                    $(this).find('.list-menu').attr('data-no', newDataNo);
-                }
-            });
-
-            // Update the list display
-            refreshList(); // Refresh the list display after item removal
-
-            // 如果列表不为空，播放当前索引的新歌曲（因为移除后原索引处是下一首歌）
-            if (musicList[1].item.length > 0) {
-                if (rem.playid >= musicList[1].item.length) {
-                    // 如果原播放位置超出新列表范围，回到开头
-                    rem.playid = 0;
-                }
-                // 重新调用 playList 从当前位置播放新歌曲
-                playList(rem.playid);
-            } else {
-                // 如果播放列表为空了，清空播放状态
-                rem.playlist = undefined;
-                rem.playid = undefined;
-
-                // 清空列表显示
-                rem.mainList.html('');
-                addListhead();      // 重新添加列表头
-                addListbar("nodata");   // 列表中没有数据
-            }
-        } else {
-            // 不在"正在播放"列表时，只是跳过这首歌
-            nextMusic();    // 切换下一首歌
-        }
+        // 播放失败时不从列表中移除，只是自动切换下一首
+        nextMusic();
     }
 }
 
@@ -475,7 +428,9 @@ function listClick(no) {
         playerSavedata('playing', musicList[1].item);   // 保存正在播放列表
     } else if(rem.dislist != -1) {    // 普通列表 (excluding collections)
         // 与之前不是同一个列表了（在播放别的列表的歌曲）或者是首次播放
-        if((rem.dislist !== rem.playlist && rem.dislist !== 1) || rem.playlist === undefined) {
+        // 或者当前是收藏列表（用户要求：点击收藏列表歌曲时总是重新加载列表，避免播放列表状态不一致）
+        var isCollection = (musicList[rem.dislist] && musicList[rem.dislist].id === 'collections');
+        if((rem.dislist !== rem.playlist && rem.dislist !== 1) || isCollection || rem.playlist === undefined) {
             rem.playlist = rem.dislist;     // 记录正在播放的列表
             // 使用深拷贝，避免与原播放列表共享同一数组导致索引、显示错乱
             try {
