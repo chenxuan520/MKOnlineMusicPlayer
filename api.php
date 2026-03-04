@@ -206,8 +206,14 @@ switch($types)   // 根据请求的 Api，执行相应操作
                                 // fee=1 是 VIP, fee=4 是付费专辑.
                                 return isset($song['fee']) && $song['fee'] != 1 && $song['fee'] != 4;
                             case 'tencent':
-                                // pay.pay_play=1 表示需要付费
-                                return !(isset($song['pay']['pay_play']) && $song['pay']['pay_play'] == 1);
+                                // pay.pay_play=1 或 payplay=1 表示需要付费
+                                if (isset($song['pay']['pay_play'])) {
+                                    return $song['pay']['pay_play'] != 1;
+                                }
+                                if (isset($song['pay']['payplay'])) {
+                                    return $song['pay']['payplay'] != 1;
+                                }
+                                return true;
                             case 'kugou':
                                 // privilege=0 是可播放
                                 return !isset($song['privilege']) || $song['privilege'] == 0;

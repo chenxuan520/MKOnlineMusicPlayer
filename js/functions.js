@@ -2346,6 +2346,10 @@ function toggleCollection(music) {
                             layer.msg('已收藏');
                         } else {
                             layer.msg('已取消收藏');
+                            // 如果当前正在查看收藏列表，刷新列表以移除该项
+                            if (rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
+                                loadCollections();
+                            }
                         }
                     } else {
                         layer.msg(jsonData.message || '操作失败');

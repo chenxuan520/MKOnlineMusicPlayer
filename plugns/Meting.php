@@ -190,7 +190,7 @@ class Meting
             case 'tencent':
             $api = array(
                 'method' => 'GET',
-                'url'    => 'https://c.y.qq.com/soso/fcgi-bin/client_search_cp',
+                'url'    => 'https://c.y.qq.com/soso/fcgi-bin/search_for_qq_cp',
                 'body'   => array(
                     'format'   => 'json',
                     'p'        => isset($option['page']) ? $option['page'] : 1,
@@ -1643,13 +1643,13 @@ class Meting
             $data = $data['musicData'];
         }
         $result = array(
-            'id'       => $data['mid'],
-            'name'     => $data['name'],
+            'id'       => isset($data['mid']) ? $data['mid'] : $data['songmid'],
+            'name'     => isset($data['name']) ? $data['name'] : $data['songname'],
             'artist'   => array(),
-            'album'    => trim($data['album']['title']),
-            'pic_id'   => $data['album']['mid'],
-            'url_id'   => $data['mid'],
-            'lyric_id' => $data['mid'],
+            'album'    => isset($data['album']['title']) ? trim($data['album']['title']) : $data['albumname'],
+            'pic_id'   => isset($data['album']['mid']) ? $data['album']['mid'] : $data['albummid'],
+            'url_id'   => isset($data['mid']) ? $data['mid'] : $data['songmid'],
+            'lyric_id' => isset($data['mid']) ? $data['mid'] : $data['songmid'],
             'source'   => 'tencent',
             'pay'      => isset($data['pay']) ? $data['pay'] : [],
         );
