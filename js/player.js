@@ -222,8 +222,21 @@ function pause() {
                 startIndex = 0;
             }
             listClick(startIndex);
+        } else {
+            var playPromise = rem.audio[0].play();
+            if (playPromise !== undefined) {
+                playPromise.then(function() {
+                    // 播放成功
+                }).catch(function(error) {
+                    // 捕获并忽略 AbortError
+                    if (error.name === 'AbortError') {
+                        console.log('Playback was interrupted by a new action.');
+                    } else {
+                        console.error('Playback error:', error);
+                    }
+                });
+            }
         }
-        rem.audio[0].play();
     }
 }
 
