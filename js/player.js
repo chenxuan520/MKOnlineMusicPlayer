@@ -180,10 +180,12 @@ function audioErr() {
 
     if(rem.errCount > 10) { // 连续播放失败的歌曲过多
         layer.msg('似乎出了点问题~播放已停止');
+        console.error('播放失败次数过多，自动停止播放 (errCount > 10)');
         rem.errCount = 0;
     } else {
         rem.errCount++;     // 记录连续播放失败的歌曲数目
         layer.msg('当前歌曲播放失败，自动播放下一首');
+        console.warn('当前歌曲播放失败，正在自动尝试下一首... (errCount: ' + rem.errCount + ')');
 
         // 播放失败时不从列表中移除，只是自动切换下一首
         nextMusic();
@@ -549,8 +551,20 @@ function play(music) {
 
         rem.audio[0].pause();
         rem.audio.attr('src', music.url);
-
-        // 监听 canplaythrough 事件，确保获取到歌曲时长
+        
+        var playPromise = rem.audio[0].play();
+        if (playPromise !== undefined) {
+            playPromise.then(function() {
+                // 播放成功
+            }).catch(function(error) {
+                // 捕获并忽略 AbortError
+                if (error.name === 'AbortError') {
+                    console.log('Playback was interrupted by a new action.');
+                } else {
+                    console.error('Playback error:', error);
+                }
+            });
+        }
         $(rem.audio[0]).one('canplaythrough', function() {
             if (mkPlayer.skipVip && rem.audio[0].duration < 90) { // 如果开启了自动跳过，且歌曲时长短于1.5分钟 (90秒)
                 rem.audio[0].pause();
@@ -615,7 +629,6 @@ function play(music) {
                 autoNextMusic();
                 return;
             }
-            rem.audio[0].play();
         });
     } catch(e) {
         audioErr(); // 调用错误处理函数
