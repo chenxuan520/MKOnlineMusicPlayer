@@ -1346,9 +1346,36 @@ class Meting
                 );
                 $t = json_decode($this->exec($api), true);
                 if (isset($t['url'])) {
+                    $selected = '';
+                    $candidates = is_array($t['url']) ? $t['url'] : array($t['url']);
+
+                    // Prefer domains with valid HTTPS certs (e.g. *.kugou.com), avoid *.tx.kugou.com
+                    foreach ($candidates as $candidate) {
+                        if (!is_string($candidate) || $candidate === '') {
+                            continue;
+                        }
+                        $host = parse_url($candidate, PHP_URL_HOST);
+                        if (!$host) {
+                            continue;
+                        }
+                        if (preg_match('/\.kugou\.com$/i', $host) && !preg_match('/\.tx\.kugou\.com$/i', $host)) {
+                            $selected = $candidate;
+                            break;
+                        }
+                    }
+                    if ($selected === '' && isset($candidates[0]) && is_string($candidates[0])) {
+                        $selected = $candidates[0];
+                    }
+
+                    // Upgrade to HTTPS when the host is known to serve a valid *.kugou.com cert.
+                    $selectedHost = $selected ? parse_url($selected, PHP_URL_HOST) : '';
+                    if ($selectedHost && preg_match('/\.kugou\.com$/i', $selectedHost) && !preg_match('/\.tx\.kugou\.com$/i', $selectedHost)) {
+                        $selected = preg_replace('/^http:\/\//i', 'https://', $selected);
+                    }
+
                     $max = $t['bitRate'] / 1000;
                     $url = array(
-                        'url'  => reset($t['url']),
+                        'url'  => $selected,
                         'size' => $t['fileSize'],
                         'br'   => $t['bitRate'] / 1000,
                     );
