@@ -573,6 +573,9 @@ function play(music) {
                 // 捕获并忽略 AbortError
                 if (error.name === 'AbortError') {
                     console.log('Playback was interrupted by a new action.');
+                } else if (error.name === 'NotSupportedError') {
+                    console.error('音频格式不支持或链接失效:', error);
+                    audioErr(); // 调用错误处理函数，触发自动播放下一首
                 } else {
                     console.error('Playback error:', error);
                 }
