@@ -646,6 +646,13 @@ function musicInfo(list, index) {
     '<span style="margin-left: 10px" class="info-btn" onclick="thisDownloadPic(this)" data-list="' + list + '" data-index="' + index + '">下载封面</span>' +
     '<span style="margin-left: 10px" class="info-btn" onclick="thisShare(this)" data-list="' + list + '" data-index="' + index + '">外链</span>';
 
+    // 仅移动端：从“右下角三个点”里提供收藏入口
+    if (rem.isMobile) {
+        var infoSongId = (music && music.id !== undefined && music.id !== null) ? String(music.id) : '';
+        var infoSource = (music && music.source !== undefined && music.source !== null) ? String(music.source) : '';
+        tempStr += '<span style="margin-left: 10px" class="info-btn info-btn-collect" onclick="thisToggleCollect(this)" data-list="' + list + '" data-index="' + index + '" data-songid="' + infoSongId + '" data-source="' + infoSource + '">收藏</span>';
+    }
+
     // 仅在查看“当前正在播放的歌曲”时提供歌词刷新入口，避免对非当前歌曲造成误解
     // 该按钮单独占一行，避免在同一行被挤压换行导致显示难看
     // 注意：重载必须绑定到“正在播放”队列索引，避免来源列表与播放队列索引不一致导致串歌。
@@ -662,7 +669,33 @@ function musicInfo(list, index) {
         shadeClose: true,
         title: false, //不显示标题
         btn: false,
-        content: tempStr
+        content: tempStr,
+        success: function(layero, layerIndex) {
+            // 仅移动端：打开后检查收藏状态，更新按钮文案
+            if (!rem.isMobile) return;
+            var $btn = $(layero).find('.info-btn-collect');
+            if ($btn.length === 0) return;
+            if (!music || music.id === undefined || music.id === null || !music.source) return;
+
+            $.ajax({
+                type: mkPlayer.method,
+                url: mkPlayer.api,
+                data: "types=collections&action=check&id=" + music.id + "&source=" + music.source,
+                dataType: mkPlayer.dataType,
+                success: function(jsonData) {
+                    if (!jsonData || !jsonData.success) return;
+                    if (jsonData.collected) {
+                        $btn.addClass('collected');
+                        $btn.data('collected', true);
+                        $btn.text('取消收藏');
+                    } else {
+                        $btn.removeClass('collected');
+                        $btn.data('collected', false);
+                        $btn.text('收藏');
+                    }
+                }
+            });
+        }
     });
 
     if(mkPlayer.debug) {
@@ -678,6 +711,55 @@ function musicInfo(list, index) {
         'url: ""');
         // 'url: "' + music.url + '"');
     }
+}
+
+// 移动端歌曲信息弹窗：收藏/取消收藏
+function thisToggleCollect(obj) {
+    var list = $(obj).data("list");
+    var index = $(obj).data("index");
+    var music;
+
+    // 取歌曲信息（与 thisDownload/thisShare 保持一致）
+    if(list == -1) {  // Collections list (legacy)
+        var $item = $('.list-item[data-no="' + index + '"]');
+        music = $item.data('music');
+        if(!music) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+    } else if(list >= 0 && musicList[list] && musicList[list].id === 'collections') {  // New collections list approach
+        if(musicList[list] && musicList[list].item && musicList[list].item[index]) {
+            music = musicList[list].item[index];
+        } else {
+            var $item2 = $('.list-item[data-no="' + index + '"]');
+            music = $item2.data('music');
+        }
+        if(!music) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+    } else {
+        if(!musicList[list] || !musicList[list].item || !musicList[list].item[index]) {
+            layer.msg('歌曲信息获取失败');
+            return;
+        }
+        music = musicList[list].item[index];
+    }
+
+    // 先乐观更新按钮文案
+    var $btn = $(obj);
+    var isCollected = $btn.hasClass('collected') || $btn.data('collected');
+    if (isCollected) {
+        $btn.removeClass('collected');
+        $btn.data('collected', false);
+        $btn.text('收藏');
+    } else {
+        $btn.addClass('collected');
+        $btn.data('collected', true);
+        $btn.text('取消收藏');
+    }
+
+    toggleCollection(music);
 }
 
 // 重新加载歌词（用于解决长时间挂起导致一直卡在“歌词加载中...”的问题）
