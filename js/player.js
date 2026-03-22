@@ -679,6 +679,38 @@ function mBcallback(newVal) {
 
 // 音量条变动回调函数
 // 参数：新的值
+function showVolumeToast(val) {
+    try {
+        if (typeof layer === 'undefined' || !layer || typeof layer.msg !== 'function') return;
+        if (typeof rem === 'undefined') return;
+
+        // 拖动时会高频触发，这里做一个轻量节流，避免疯狂闪烁
+        var now = Date.now();
+        if (!rem._volumeToast) rem._volumeToast = {};
+
+        rem._volumeToast.pending = val;
+        if (rem._volumeToast.timer) {
+            clearTimeout(rem._volumeToast.timer);
+            rem._volumeToast.timer = null;
+        }
+
+        var last = rem._volumeToast.lastTs || 0;
+        var delay = (now - last < 80) ? 80 : 0;
+        rem._volumeToast.timer = setTimeout(function(){
+            try {
+                var v = (rem._volumeToast && typeof rem._volumeToast.pending === 'number') ? rem._volumeToast.pending : val;
+                // 关闭上一条，避免堆叠
+                if (rem.volumeToastIndex) {
+                    try { layer.close(rem.volumeToastIndex); } catch (e1) {}
+                }
+                var volText = '音量：' + Math.round(v * 100) + '%';
+                rem.volumeToastIndex = layer.msg(volText, { time: 600, shade: 0 });
+                rem._volumeToast.lastTs = Date.now();
+            } catch (e2) {}
+        }, delay);
+    } catch (e) {}
+}
+
 function vBcallback(newVal) {
     if(rem.audio[0] !== undefined) {   // 音频对象已加载则立即改变音量
         rem.audio[0].volume = newVal;
@@ -691,6 +723,9 @@ function vBcallback(newVal) {
     if(newVal === 0) $(".btn-quiet").addClass("btn-state-quiet");
 
     playerSavedata('volume', newVal); // 存储音量信息
+
+    // 拖动/点击音量条时显示提示
+    showVolumeToast(newVal);
 }
 
 // 下面是进度条处理
@@ -793,7 +828,45 @@ mkpgb.prototype = {
 document.onkeydown = function showkey(e) {
     var key = e.keyCode || e.which || e.charCode;
     var ctrl = e.ctrlKey || e.metaKey;
-    var isFocus = $('input').is(":focus");
+    var isFocus = $('input,textarea').is(":focus") || (e && e.target && (e.target.isContentEditable === true));
+
+    // Cmd/Ctrl + ↑/↓：最小步进微调音量（避免滚动/跳转默认行为）
+    if (ctrl && (key == 38 || key == 40) && !isFocus) {
+        try {
+            // 最小微调步进：1%
+            var step = 0.01;
+            var cur = 0;
+            if (typeof volume_bar !== 'undefined' && volume_bar && typeof volume_bar.percent === 'number') {
+                cur = volume_bar.percent;
+            } else if (rem && rem.audio && rem.audio[0] && typeof rem.audio[0].volume === 'number') {
+                cur = rem.audio[0].volume;
+            }
+            var next = cur + (key == 38 ? step : -step);
+            // 规整到 2 位小数，减少浮点抖动
+            next = Math.round(next * 100) / 100;
+            if (next > 1) next = 1;
+            if (next < 0) next = 0;
+
+            // 同步音量与 UI
+            if (typeof vBcallback === 'function') {
+                vBcallback(next);
+            } else if (rem && rem.audio && rem.audio[0] !== undefined) {
+                rem.audio[0].volume = next;
+                try { playerSavedata('volume', next); } catch (e2) {}
+            }
+            if (typeof volume_bar !== 'undefined' && volume_bar && typeof volume_bar.goto === 'function') {
+                volume_bar.goto(next);
+            }
+
+            // 提示当前音量（避免用户无感知）
+            showVolumeToast(next);
+
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
+            return false;
+        } catch (err) {
+            // ignore
+        }
+    }
     if (ctrl && key == 37 && !isFocus) playList(rem.playid - 1);    // Ctrl+左方向键 切换上一首歌
     if (ctrl && key == 39 && !isFocus) playList(rem.playid + 1);    // Ctrl+右方向键 切换下一首歌
     if (key == 32 && !isFocus) pause();         // 空格键 播放/暂停歌曲

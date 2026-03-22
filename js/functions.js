@@ -1964,20 +1964,90 @@ function openCollectionsSearch() {
 
                 for (var i = 0; i < items.length; i++) {
                     var it = items[i] || {};
-                    var line = (it.artist || '') + ' - ' + (it.name || '') + (it.album ? ('  [' + it.album + ']') : '');
-                    var match = fuzzyMatch(q, line);
-                    if (match) {
-                        out.push({
-                            origIndex: i,
-                            item: it,
-                            line: line,
-                            score: match.score,
-                            positions: match.positions
-                        });
+                    var name = (it.name || '').toString();
+                    var artist = (it.artist || '').toString();
+                    var album = (it.album || '').toString();
+
+                    // 搜索字段：歌名/歌手/专辑都参与（允许跨字段连续匹配）
+                    var combinedParts = [];
+                    if (name) combinedParts.push(name);
+                    if (artist) combinedParts.push(artist);
+                    if (album) combinedParts.push(album);
+                    var combined = combinedParts.join(' ');
+                    if (!combined) combined = '';
+
+                    var match = fuzzyMatch(q, combined);
+                    if (!match) continue;
+
+                    // 将命中位置按字段拆分，便于渲染两行布局
+                    var positionsName = [];
+                    var positionsArtist = [];
+                    var positionsAlbum = [];
+
+                    var nameLen = name.length;
+                    var artistLen = artist.length;
+                    var albumLen = album.length;
+
+                    // 计算字段在 combined 中的起始偏移（按 name/artist/album 拼接）
+                    var hasName = !!name;
+                    var hasArtist = !!artist;
+                    var hasAlbum = !!album;
+                    var artistStart = hasName ? (nameLen + (hasArtist ? 1 : 0)) : 0;
+                    var albumStart = 0;
+                    if (hasName && hasArtist) {
+                        albumStart = nameLen + 1 + artistLen + (hasAlbum ? 1 : 0);
+                    } else if (hasName && !hasArtist) {
+                        albumStart = nameLen + (hasAlbum ? 1 : 0);
+                    } else if (!hasName && hasArtist) {
+                        albumStart = artistLen + (hasAlbum ? 1 : 0);
+                    } else {
+                        albumStart = 0;
                     }
+
+                    // 因为 combinedParts 是按存在字段拼接的，上面偏移在字段缺失时会变复杂。
+                    // 为保证正确，重新按实际拼接顺序计算偏移。
+                    var startMap = { name: -1, artist: -1, album: -1 };
+                    var cursor = 0;
+                    if (name) {
+                        startMap.name = cursor;
+                        cursor += nameLen;
+                        if (artist || album) cursor += 1;
+                    }
+                    if (artist) {
+                        startMap.artist = cursor;
+                        cursor += artistLen;
+                        if (album) cursor += 1;
+                    }
+                    if (album) {
+                        startMap.album = cursor;
+                        cursor += albumLen;
+                    }
+
+                    for (var pi = 0; pi < match.positions.length; pi++) {
+                        var p = match.positions[pi];
+                        if (name && startMap.name >= 0 && p >= startMap.name && p < startMap.name + nameLen) {
+                            positionsName.push(p - startMap.name);
+                        } else if (artist && startMap.artist >= 0 && p >= startMap.artist && p < startMap.artist + artistLen) {
+                            positionsArtist.push(p - startMap.artist);
+                        } else if (album && startMap.album >= 0 && p >= startMap.album && p < startMap.album + albumLen) {
+                            positionsAlbum.push(p - startMap.album);
+                        }
+                    }
+
+                    out.push({
+                        origIndex: i,
+                        item: it,
+                        name: name,
+                        artist: artist,
+                        album: album,
+                        score: match.score,
+                        positionsName: positionsName,
+                        positionsArtist: positionsArtist,
+                        positionsAlbum: positionsAlbum
+                    });
                 }
 
-                // 空查询：按原顺序展示前 50
+                // 空查询：按原顺序展示
                 if (!q.trim()) {
                     out.sort(function(a, b) { return a.origIndex - b.origIndex; });
                 } else {
@@ -2004,12 +2074,20 @@ function openCollectionsSearch() {
                 for (var i = 0; i < state.results.length; i++) {
                     var r = state.results[i];
                     var active = (i === state.active);
+
+                    var titleName = r.name || '(无歌名)';
+                    var subParts = [];
+                    subParts.push('#' + (r.origIndex + 1));
+                    if (r.artist) subParts.push(highlightByPositions(r.artist, r.positionsArtist));
+                    if (r.album) subParts.push(highlightByPositions(r.album, r.positionsAlbum));
+                    var subHtml = subParts.join(' · ');
+
                     html += '' +
                         '<div class="collections-fzf-row" data-idx="' + i + '" ' +
                         '  style="padding:10px 12px; cursor:pointer; border-bottom:1px solid #f3f4f6; ' +
                         (active ? 'background:#e8f0ff;' : 'background:transparent;') + '">' +
-                        '  <div style="font-size:14px; line-height:18px;">' + highlightByPositions(r.line, r.positions) + '</div>' +
-                        '  <div style="margin-top:4px; font-size:12px; color:#6b7280;">#' + (r.origIndex + 1) + '</div>' +
+                        '  <div style="font-size:14px; line-height:18px;">' + highlightByPositions(titleName, r.positionsName) + '</div>' +
+                        '  <div style="margin-top:4px; font-size:12px; color:#6b7280;">' + subHtml + '</div>' +
                         '</div>';
                 }
                 $results.html(html);
