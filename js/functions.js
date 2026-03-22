@@ -1547,14 +1547,12 @@ function loadCollections() {
                     rem.dislist = tempCollectionIndex;
                 }
 
-                // Add import/export buttons for collection list (both when empty and not empty)
+                // Add import/export/search buttons for collection list
                 addListbar("collections_export");    // 添加导出按钮
                 addListbar("collections_import");    // 添加导入按钮
+                addListbar("collections_search");    // 添加搜索按钮
 
-                // Add clear button for collection list only when there are items
-                if(jsonData.collections.length > 0) {
-                    addListbar("clear");    // 清空列表
-                }
+                // 收藏列表不提供“清空列表”：该按钮为通用列表清空入口，但对服务端收藏数据不生效，容易造成误解
             } else {
                 rem.mainList.html('');   // 清空加载中提示
                 addListhead();      // 重新添加列表头
@@ -1836,8 +1834,261 @@ function addListbar(types) {
         case "collections_import":   // 收藏列表导入
             html = '<div class="list-item text-center list-clickable" id="list-foot" onclick="importCollections();">导入收藏</div>';
         break;
+
+        case "collections_search":   // 收藏列表搜索
+            html = '<div class="list-item text-center list-clickable" id="list-foot" onclick="openCollectionsSearch();">搜索收藏</div>';
+        break;
     }
     rem.mainList.append(html);
+}
+
+// 打开收藏搜索（类似 fzf：模糊匹配 + 键盘选择 + 回车播放）
+function openCollectionsSearch() {
+    if (!(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections')) {
+        layer.msg('请先打开“我的收藏”列表');
+        return;
+    }
+    var items = (musicList[rem.dislist] && musicList[rem.dislist].item) ? musicList[rem.dislist].item.slice() : [];
+    if (!items || items.length === 0) {
+        layer.msg('收藏列表为空');
+        return;
+    }
+
+    // 采用浅色风格，避免外层白/内层黑的割裂感；用 flex 解决双滚动条
+    var boxHtml = '' +
+        '<div id="collections-search-box" style="height:100%; box-sizing:border-box; padding: 12px; background:#ffffff; color:#222; display:flex; flex-direction:column;">' +
+        '  <input id="collections-search-input" autocomplete="off" spellcheck="false" placeholder="搜索我的收藏（模糊匹配，类似 fzf）" ' +
+        '    style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid #e5e7eb; ' +
+        '    background:#ffffff; color:#111827; outline:none;" />' +
+        '  <div style="margin-top:8px; font-size:12px; color:#6b7280;">↑↓ 选择 / Enter 播放 / Esc 关闭</div>' +
+        '  <div id="collections-search-results" style="margin-top:10px; border:1px solid #e5e7eb; border-radius:8px; overflow:auto; flex:1; min-height:0;"></div>' +
+        '</div>';
+
+    var layerIndex;
+    layerIndex = layer.open({
+        type: 1,
+        title: '搜索收藏',
+        shade: [0.25,,'#000'],
+        shadeClose: true,
+        area: rem.isMobile ? ['95%', '80%'] : ['560px', '640px'],
+        content: boxHtml,
+        success: function(layero, idx) {
+            layerIndex = idx;
+            var $layer = $(layero);
+            var $input = $layer.find('#collections-search-input');
+            var $results = $layer.find('#collections-search-results');
+
+            // 避免出现外层/内层两个滚动条：让内容区不滚动，只让结果区滚动
+            $layer.find('.layui-layer-content').css({
+                padding: '0',
+                overflow: 'hidden',
+                background: '#ffffff'
+            });
+
+            var state = {
+                query: '',
+                results: [],
+                active: 0
+            };
+
+            function escapeHtml(str) {
+                return String(str === undefined || str === null ? '' : str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            // 返回 { score, positions }；不匹配返回 null
+            function fuzzyMatch(query, text) {
+                var q = (query || '').toString().trim().toLowerCase();
+                var tRaw = (text || '').toString();
+                var t = tRaw.toLowerCase();
+                if (!q) {
+                    return { score: 0, positions: [] };
+                }
+                var qi = 0;
+                var positions = [];
+                var lastPos = -2;
+                var firstPos = -1;
+                var score = 0;
+
+                for (var i = 0; i < t.length && qi < q.length; i++) {
+                    if (t[i] === q[qi]) {
+                        positions.push(i);
+                        if (firstPos === -1) firstPos = i;
+                        if (i === lastPos + 1) {
+                            score += 10; // 连续命中加分（更像 fzf 的感觉）
+                        } else {
+                            score += 3;
+                        }
+                        lastPos = i;
+                        qi++;
+                    }
+                }
+                if (qi !== q.length) return null;
+
+                // 越靠前越加分
+                if (firstPos >= 0) {
+                    score += Math.max(0, 30 - firstPos);
+                }
+                // 越短越加分（轻微）
+                score += Math.max(0, 10 - (t.length - q.length));
+
+                return { score: score, positions: positions };
+            }
+
+            function highlightByPositions(text, positions) {
+                var s = (text || '').toString();
+                if (!positions || positions.length === 0) return escapeHtml(s);
+                var set = {};
+                for (var i = 0; i < positions.length; i++) {
+                    set[positions[i]] = true;
+                }
+                var out = '';
+                for (var j = 0; j < s.length; j++) {
+                    var ch = escapeHtml(s[j]);
+                    if (set[j]) {
+                        out += '<span style="color:#ff4d4f; font-weight:600;">' + ch + '</span>';
+                    } else {
+                        out += ch;
+                    }
+                }
+                return out;
+            }
+
+            function buildResults(query) {
+                var q = (query || '').toString();
+                var out = [];
+
+                for (var i = 0; i < items.length; i++) {
+                    var it = items[i] || {};
+                    var line = (it.artist || '') + ' - ' + (it.name || '') + (it.album ? ('  [' + it.album + ']') : '');
+                    var match = fuzzyMatch(q, line);
+                    if (match) {
+                        out.push({
+                            origIndex: i,
+                            item: it,
+                            line: line,
+                            score: match.score,
+                            positions: match.positions
+                        });
+                    }
+                }
+
+                // 空查询：按原顺序展示前 50
+                if (!q.trim()) {
+                    out.sort(function(a, b) { return a.origIndex - b.origIndex; });
+                } else {
+                    out.sort(function(a, b) {
+                        if (b.score !== a.score) return b.score - a.score;
+                        return a.origIndex - b.origIndex;
+                    });
+                }
+
+                return out.slice(0, 60);
+            }
+
+            function render() {
+                state.results = buildResults(state.query);
+                if (state.active < 0) state.active = 0;
+                if (state.active >= state.results.length) state.active = Math.max(0, state.results.length - 1);
+
+                if (!state.results.length) {
+                    $results.html('<div style="padding: 12px; color:#9aa4af;">未匹配到收藏歌曲</div>');
+                    return;
+                }
+
+                var html = '';
+                for (var i = 0; i < state.results.length; i++) {
+                    var r = state.results[i];
+                    var active = (i === state.active);
+                    html += '' +
+                        '<div class="collections-fzf-row" data-idx="' + i + '" ' +
+                        '  style="padding:10px 12px; cursor:pointer; border-bottom:1px solid #f3f4f6; ' +
+                        (active ? 'background:#e8f0ff;' : 'background:transparent;') + '">' +
+                        '  <div style="font-size:14px; line-height:18px;">' + highlightByPositions(r.line, r.positions) + '</div>' +
+                        '  <div style="margin-top:4px; font-size:12px; color:#6b7280;">#' + (r.origIndex + 1) + '</div>' +
+                        '</div>';
+                }
+                $results.html(html);
+            }
+
+            function ensureActiveVisible() {
+                try {
+                    var el = $results.find('.collections-fzf-row').get(state.active);
+                    if (el && el.scrollIntoView) {
+                        el.scrollIntoView({ block: 'nearest' });
+                    }
+                } catch (e) {}
+            }
+
+            function playActive() {
+                var r = state.results && state.results[state.active];
+                if (!r) return;
+                layer.close(layerIndex);
+                // 直接按“我的收藏”列表索引播放
+                listClick(r.origIndex);
+            }
+
+            // 绑定输入与键盘事件
+            $input.off('input.collectionsSearch').on('input.collectionsSearch', function() {
+                state.query = $(this).val();
+                state.active = 0;
+                render();
+            });
+
+            $input.off('keydown.collectionsSearch').on('keydown.collectionsSearch', function(e) {
+                var key = e.key || e.keyCode;
+                if (key === 'ArrowDown' || key === 40) {
+                    e.preventDefault();
+                    state.active = Math.min(state.active + 1, Math.max(0, state.results.length - 1));
+                    render();
+                    ensureActiveVisible();
+                } else if (key === 'ArrowUp' || key === 38) {
+                    e.preventDefault();
+                    state.active = Math.max(state.active - 1, 0);
+                    render();
+                    ensureActiveVisible();
+                } else if (key === 'Enter' || key === 13) {
+                    e.preventDefault();
+                    playActive();
+                } else if (key === 'Escape' || key === 27) {
+                    e.preventDefault();
+                    layer.close(layerIndex);
+                }
+            });
+
+            $results.off('click.collectionsSearch').on('click.collectionsSearch', '.collections-fzf-row', function() {
+                var idx = parseInt($(this).data('idx'), 10);
+                if (!isNaN(idx)) {
+                    state.active = idx;
+                    playActive();
+                }
+            });
+
+            $results.off('mousemove.collectionsSearch').on('mousemove.collectionsSearch', '.collections-fzf-row', function() {
+                var idx = parseInt($(this).data('idx'), 10);
+                if (!isNaN(idx) && idx !== state.active) {
+                    state.active = idx;
+                    render();
+                }
+            });
+
+            // 初始渲染
+            state.query = '';
+            state.active = 0;
+            render();
+
+            // 自动聚焦
+            setTimeout(function(){
+                try { $input.focus(); } catch(e) {}
+            }, 0);
+        }
+    });
+
+    return layerIndex;
 }
 
 // 从“正在播放”列表移除指定位置的歌曲，并根据需要切歌
