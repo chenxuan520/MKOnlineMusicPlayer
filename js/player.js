@@ -174,9 +174,62 @@ $(function() {
 var rem = [];
 
 // 音频错误处理函数
+function logUnplayableMusic(music, reason, err) {
+    try {
+        // 去重：NotSupportedError catch + audio error 可能会连续触发两次
+        var key = '';
+        try {
+            if (music) {
+                key = String(music.source || '') + ':' + String(music.id || '') + ':' + String(music.url || '');
+            } else {
+                key = 'unknown';
+            }
+        } catch (e0) {
+            key = 'unknown';
+        }
+
+        var now = Date.now();
+        if (typeof rem !== 'undefined') {
+            if (!rem._lastUnplayable) rem._lastUnplayable = {};
+            if (rem._lastUnplayable.key === key && (now - (rem._lastUnplayable.ts || 0) < 1500)) {
+                return;
+            }
+            rem._lastUnplayable.key = key;
+            rem._lastUnplayable.ts = now;
+        }
+
+        var title = '';
+        if (music) {
+            title = (music.artist ? (music.artist + ' - ') : '') + (music.name || '');
+        }
+        console.error('[播放失败] ' + (reason || 'unknown') + (title ? (' | ' + title) : ''));
+        if (music) {
+            console.error('[播放失败] source/id:', music.source, music.id);
+            console.error('[播放失败] url:', music.url);
+        }
+        if (err) {
+            console.error('[播放失败] error:', err);
+        }
+    } catch (e) {
+        // ignore
+    }
+}
+
 function audioErr() {
     // 没播放过，直接跳过
     if(rem.playlist === undefined) return true;
+
+    // 打印播放失败的资源链接，方便排查
+    try {
+        var m = (typeof rem !== 'undefined') ? rem.curMusic : null;
+        var mediaErr = null;
+        try {
+            if (rem && rem.audio && rem.audio[0] && rem.audio[0].error) {
+                mediaErr = rem.audio[0].error;
+            }
+        } catch (e1) {}
+        logUnplayableMusic(m, 'audio-error', mediaErr);
+    } catch (e2) {}
 
     if(rem.errCount > 10) { // 连续播放失败的歌曲过多
         layer.msg('似乎出了点问题~播放已停止');
@@ -524,6 +577,9 @@ function initAudio() {
 // 播放音乐
 // 参数：要播放的音乐数组
 function play(music) {
+    // 记录当前尝试播放的歌曲，便于在 audioErr() 中打印失败链接
+    try { rem.curMusic = music; } catch (e0) {}
+
     // 调试信息输出
     if(mkPlayer.debug) {
         console.log('开始播放 - ' + music.name);
@@ -574,7 +630,7 @@ function play(music) {
                 if (error.name === 'AbortError') {
                     console.log('Playback was interrupted by a new action.');
                 } else if (error.name === 'NotSupportedError') {
-                    console.error('音频格式不支持或链接失效:', error);
+                    logUnplayableMusic(music, 'NotSupportedError', error);
                     audioErr(); // 调用错误处理函数，触发自动播放下一首
                 } else {
                     console.error('Playback error:', error);

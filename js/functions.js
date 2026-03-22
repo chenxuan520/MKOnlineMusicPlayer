@@ -2108,6 +2108,30 @@ function openCollectionsSearch() {
                 layer.close(layerIndex);
                 // 直接按“我的收藏”列表索引播放
                 listClick(r.origIndex);
+
+                // 仅在“收藏搜索”场景：播放后自动定位到该歌曲在收藏列表中的位置
+                try {
+                    var idx = r.origIndex;
+                    setTimeout(function(){
+                        var $target = $('.list-item[data-no="' + idx + '"]');
+                        if(!$target.length) return;
+                        var offset = 80;
+                        if(rem.isMobile) {
+                            var $container = $('#main-list');
+                            var top = $target.position().top + $container.scrollTop() - offset;
+                            $container.stop(true).animate({scrollTop: top}, 160);
+                        } else {
+                            if ($.fn && $.fn.mCustomScrollbar) {
+                                var top2 = $target.position().top - offset;
+                                $("#main-list").mCustomScrollbar("scrollTo", top2);
+                            } else {
+                                var $container2 = $('#main-list');
+                                var top3 = $target.position().top + $container2.scrollTop() - offset;
+                                $container2.scrollTop(top3);
+                            }
+                        }
+                    }, 0);
+                } catch (e) {}
             }
 
             // 绑定输入与键盘事件
