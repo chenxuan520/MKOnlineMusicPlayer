@@ -1517,9 +1517,6 @@ function loadCollections() {
         dataType: mkPlayer.dataType,
         success: function(jsonData) {
             if (jsonData.success && jsonData.collections) {
-                rem.mainList.html('');   // 清空加载中提示
-                addListhead();      // 重新添加列表头
-
                 // Create temporary playlist entry for the collection
                 if (!musicList[tempCollectionIndex]) {
                     musicList[tempCollectionIndex] = {};
@@ -1527,6 +1524,12 @@ function loadCollections() {
                 musicList[tempCollectionIndex].item = [];
                 musicList[tempCollectionIndex].name = '我的收藏';
                 musicList[tempCollectionIndex].id = 'collections';
+
+                // 先切换到收藏列表，再渲染表头，确保表头上的收藏搜索入口可见
+                rem.dislist = tempCollectionIndex;
+
+                rem.mainList.html('');   // 清空加载中提示
+                addListhead();      // 重新添加列表头
 
                 if(jsonData.collections.length == 0) {
                     addListbar("nodata");   // 列表中没有数据
@@ -1542,9 +1545,6 @@ function loadCollections() {
                         // 为每个列表项添加数据，以便后续获取完整信息
                         $('.list-item[data-no="' + i + '"]').data('music', tmpMusic);
                     }
-
-                    // Now set this temporary list as the display list
-                    rem.dislist = tempCollectionIndex;
                 }
 
                 // Add import/export/search buttons for collection list
@@ -1775,6 +1775,11 @@ function scrollToLastPlayed(index) {
 
 // 向列表中加入列表头
 function addListhead() {
+    var isCollectionsList = (rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections');
+    var songTitle = '歌曲';
+    if (isCollectionsList) {
+        songTitle += '<span class="collections-head-search" onclick="openCollectionsSearch(); return false;" title="搜索收藏"></span>';
+    }
     var html = '<div class="list-item list-head">' +
     '    <span class="music-album">' +
     '        专辑' +
@@ -1783,7 +1788,7 @@ function addListhead() {
     '        歌手' +
     '    </span>' +
     '    <span class="music-name">' +
-    '        歌曲' +
+    '        ' + songTitle +
     '    </span>' +
     '</div>';
     rem.mainList.append(html);
