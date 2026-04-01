@@ -497,8 +497,11 @@ function listClick(no) {
     } else if(rem.dislist != -1) {    // 普通列表 (excluding collections)
         // 与之前不是同一个列表了（在播放别的列表的歌曲）或者是首次播放
         // 或者当前是收藏列表（用户要求：点击收藏列表歌曲时总是重新加载列表，避免播放列表状态不一致）
-        var isCollection = (musicList[rem.dislist] && musicList[rem.dislist].id === 'collections');
-        if((rem.dislist !== rem.playlist && rem.dislist !== 1) || isCollection || rem.playlist === undefined) {
+        var currentList = musicList[rem.dislist];
+        var isCollection = (currentList && currentList.id === 'collections');
+        var isRecommendList = (currentList && currentList.id === 'recommend_playlist');
+        var shouldReloadRecommendList = isRecommendList && currentList._recommendDirty === true;
+        if((rem.dislist !== rem.playlist && rem.dislist !== 1) || isCollection || rem.playlist === undefined || shouldReloadRecommendList) {
             rem.playlist = rem.dislist;     // 记录正在播放的列表
             // 使用深拷贝，避免与原播放列表共享同一数组导致索引、显示错乱
             try {
@@ -506,6 +509,9 @@ function listClick(no) {
             } catch (e) {
                 // 回退为浅拷贝
                 musicList[1].item = musicList[rem.playlist].item.slice ? musicList[rem.playlist].item.slice() : musicList[rem.playlist].item;
+            }
+            if (isRecommendList) {
+                currentList._recommendDirty = false;
             }
 
             // 正在播放 列表项已发生变更，进行保存
@@ -755,12 +761,8 @@ function showVolumeToast(val) {
         rem._volumeToast.timer = setTimeout(function(){
             try {
                 var v = (rem._volumeToast && typeof rem._volumeToast.pending === 'number') ? rem._volumeToast.pending : val;
-                // 关闭上一条，避免堆叠
-                if (rem.volumeToastIndex) {
-                    try { layer.close(rem.volumeToastIndex); } catch (e1) {}
-                }
                 var volText = '音量：' + Math.round(v * 100) + '%';
-                rem.volumeToastIndex = layer.msg(volText, { time: 600, shade: 0 });
+                layer.msg(volText, { time: 600, shade: 0, offset: 't', id: 'mkplayer-volume-toast' });
                 rem._volumeToast.lastTs = Date.now();
             } catch (e2) {}
         }, delay);

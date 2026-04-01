@@ -463,7 +463,7 @@ function loadRecommendList(listIndex) {
         return;
     }
 
-    var loadingMsg = layer.msg('正在分析您的喜好...', {icon: 16, shade: [0.25, '#000'], time: 0});
+    var loadingMsg = layer.msg('正在生成个性化推荐...', {icon: 16, shade: [0.25, '#000'], time: 0});
 
     // 定义核心推荐请求函数
     var requestRecommendation = function(favList) {
@@ -482,7 +482,6 @@ function loadRecommendList(listIndex) {
             dataType: "json",
             success: function(data) {
                 if (data.task_id) {
-                    layer.msg('正在为您生成个性化推荐...', {icon: 16, shade: [0.25, '#000'], time: 0});
                     pollRecommendTask(data.task_id, listIndex, loadingMsg, token);
                 } else {
                     layer.close(loadingMsg);
@@ -660,13 +659,15 @@ function processRecommendItems(items, listIndex, loadingMsg) {
             }
 
             musicList[listIndex].item = deduped;
+            musicList[listIndex]._recommendDirty = true;
             layer.close(loadingMsg);
 
             // 切换到推荐列表并显示
             rem.dislist = listIndex;
             loadList(listIndex);
+            listClick(0);
 
-            layer.msg('智能推荐已更新');
+            layer.msg('智能推荐已更新，已自动播放第一首');
         }
     }
 
