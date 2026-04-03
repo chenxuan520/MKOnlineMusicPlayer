@@ -743,12 +743,32 @@ function mBcallback(newVal) {
 // 参数：新的值
 function showVolumeToast(val) {
     try {
-        if (typeof layer === 'undefined' || !layer || typeof layer.msg !== 'function') return;
         if (typeof rem === 'undefined') return;
 
         // 拖动时会高频触发，这里做一个轻量节流，避免疯狂闪烁
         var now = Date.now();
         if (!rem._volumeToast) rem._volumeToast = {};
+
+        var $toast = $('#mkplayer-volume-toast');
+        if (!$toast.length) {
+            $toast = $('<div id="mkplayer-volume-toast"></div>').css({
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                padding: '6px 12px',
+                'border-radius': '999px',
+                background: 'rgba(0, 0, 0, 0.72)',
+                color: '#fff',
+                'font-size': '12px',
+                'line-height': '18px',
+                'z-index': 2147483647,
+                display: 'none',
+                'pointer-events': 'none',
+                'box-shadow': '0 4px 12px rgba(0,0,0,.18)'
+            });
+            $('body').append($toast);
+        }
 
         rem._volumeToast.pending = val;
         if (rem._volumeToast.timer) {
@@ -762,7 +782,13 @@ function showVolumeToast(val) {
             try {
                 var v = (rem._volumeToast && typeof rem._volumeToast.pending === 'number') ? rem._volumeToast.pending : val;
                 var volText = '音量：' + Math.round(v * 100) + '%';
-                layer.msg(volText, { time: 600, shade: 0, offset: 't', id: 'mkplayer-volume-toast' });
+                $toast.text(volText).stop(true, true).fadeIn(80);
+                if (rem._volumeToast.hideTimer) {
+                    clearTimeout(rem._volumeToast.hideTimer);
+                }
+                rem._volumeToast.hideTimer = setTimeout(function() {
+                    $toast.fadeOut(120);
+                }, 600);
                 rem._volumeToast.lastTs = Date.now();
             } catch (e2) {}
         }, delay);
