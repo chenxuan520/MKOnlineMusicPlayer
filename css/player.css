@@ -365,8 +365,8 @@ body {
     text-indent: -99px;
 }
 
-/* 收藏列表表头搜索入口 */
-.collections-head-search {
+/* 列表表头搜索入口 */
+.list-head-search {
     display: inline-block;
     width: 16px;
     height: 16px;
@@ -377,7 +377,7 @@ body {
     background-size: contain;
     opacity: 0.85;
 }
-.collections-head-search:hover {
+.list-head-search:hover {
     opacity: 1;
 }
 

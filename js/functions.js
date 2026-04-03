@@ -1776,9 +1776,12 @@ function scrollToLastPlayed(index) {
 // 向列表中加入列表头
 function addListhead() {
     var isCollectionsList = (rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections');
+    var isPlayingList = (rem.dislist === 1);
     var songTitle = '歌曲';
     if (isCollectionsList) {
-        songTitle += '<span class="collections-head-search" onclick="openCollectionsSearch(); return false;" title="搜索收藏"></span>';
+        songTitle += '<span class="list-head-search" onclick="openCollectionsSearch(); return false;" title="搜索收藏"></span>';
+    } else if (isPlayingList) {
+        songTitle += '<span class="list-head-search" onclick="openPlayingSearch(); return false;" title="搜索正在播放"></span>';
     }
     var html = '<div class="list-item list-head">' +
     '    <span class="music-album">' +
@@ -1847,22 +1850,24 @@ function addListbar(types) {
     rem.mainList.append(html);
 }
 
-// 打开收藏搜索（类似 fzf：模糊匹配 + 键盘选择 + 回车播放）
-function openCollectionsSearch() {
-    if (!(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections')) {
-        layer.msg('请先打开“我的收藏”列表');
+// 打开列表搜索（类似 fzf：模糊匹配 + 键盘选择 + 回车播放）
+function openListQuickSearch(options) {
+    options = options || {};
+    if (options.validate && options.validate() !== true) {
         return;
     }
-    var items = (musicList[rem.dislist] && musicList[rem.dislist].item) ? musicList[rem.dislist].item.slice() : [];
+
+    var targetList = options.listIndex;
+    var items = (musicList[targetList] && musicList[targetList].item) ? musicList[targetList].item.slice() : [];
     if (!items || items.length === 0) {
-        layer.msg('收藏列表为空');
+        layer.msg(options.emptyMessage || '列表为空');
         return;
     }
 
     // 采用浅色风格，避免外层白/内层黑的割裂感；用 flex 解决双滚动条
     var boxHtml = '' +
         '<div id="collections-search-box" style="height:100%; box-sizing:border-box; padding: 12px; background:#ffffff; color:#222; display:flex; flex-direction:column;">' +
-        '  <input id="collections-search-input" autocomplete="off" spellcheck="false" placeholder="搜索我的收藏（模糊匹配，类似 fzf）" ' +
+        '  <input id="collections-search-input" autocomplete="off" spellcheck="false" placeholder="' + (options.placeholder || '搜索列表（模糊匹配，类似 fzf）') + '" ' +
         '    style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid #e5e7eb; ' +
         '    background:#ffffff; color:#111827; outline:none;" />' +
         '  <div style="margin-top:8px; font-size:12px; color:#6b7280;">↑↓ 选择 / Enter 播放 / Esc 关闭</div>' +
@@ -1872,7 +1877,7 @@ function openCollectionsSearch() {
     var layerIndex;
     layerIndex = layer.open({
         type: 1,
-        title: '搜索收藏',
+        title: options.layerTitle || '搜索列表',
         shade: [0.25,,'#000'],
         shadeClose: true,
         area: rem.isMobile ? ['95%', '80%'] : ['560px', '640px'],
@@ -2071,7 +2076,7 @@ function openCollectionsSearch() {
                 if (state.active >= state.results.length) state.active = Math.max(0, state.results.length - 1);
 
                 if (!state.results.length) {
-                    $results.html('<div style="padding: 12px; color:#9aa4af;">未匹配到收藏歌曲</div>');
+                    $results.html('<div style="padding: 12px; color:#9aa4af;">' + (options.noMatchMessage || '未匹配到歌曲') + '</div>');
                     return;
                 }
 
@@ -2111,10 +2116,13 @@ function openCollectionsSearch() {
                 var r = state.results && state.results[state.active];
                 if (!r) return;
                 layer.close(layerIndex);
-                // 直接按“我的收藏”列表索引播放
-                listClick(r.origIndex);
 
-                // 仅在“收藏搜索”场景：播放后自动定位到该歌曲在收藏列表中的位置
+                var previousList = rem.dislist;
+                rem.dislist = targetList;
+                listClick(r.origIndex);
+                rem.dislist = previousList;
+
+                // 播放后自动定位到该歌曲在当前列表中的位置
                 try {
                     var idx = r.origIndex;
                     setTimeout(function(){
@@ -2196,6 +2204,42 @@ function openCollectionsSearch() {
     });
 
     return layerIndex;
+}
+
+// 打开收藏搜索
+function openCollectionsSearch() {
+    openListQuickSearch({
+        listIndex: rem.dislist,
+        validate: function() {
+            if (!(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections')) {
+                layer.msg('请先打开“我的收藏”列表');
+                return false;
+            }
+            return true;
+        },
+        emptyMessage: '收藏列表为空',
+        layerTitle: '搜索收藏',
+        placeholder: '搜索我的收藏（模糊匹配，类似 fzf）',
+        noMatchMessage: '未匹配到收藏歌曲'
+    });
+}
+
+// 打开正在播放搜索
+function openPlayingSearch() {
+    openListQuickSearch({
+        listIndex: 1,
+        validate: function() {
+            if (rem.dislist !== 1) {
+                layer.msg('请先打开“正在播放”列表');
+                return false;
+            }
+            return true;
+        },
+        emptyMessage: '正在播放列表为空',
+        layerTitle: '搜索正在播放',
+        placeholder: '搜索正在播放歌曲（模糊匹配，类似 fzf）',
+        noMatchMessage: '未匹配到正在播放歌曲'
+    });
 }
 
 // 从“正在播放”列表移除指定位置的歌曲，并根据需要切歌
