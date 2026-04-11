@@ -2096,8 +2096,14 @@ function openListQuickSearch(options) {
                         '<div class="collections-fzf-row" data-idx="' + i + '" ' +
                         '  style="padding:10px 12px; cursor:pointer; border-bottom:1px solid #f3f4f6; ' +
                         (active ? 'background:#e8f0ff;' : 'background:transparent;') + '">' +
-                        '  <div style="font-size:14px; line-height:18px;">' + highlightByPositions(titleName, r.positionsName) + '</div>' +
-                        '  <div style="margin-top:4px; font-size:12px; color:#6b7280;">' + subHtml + '</div>' +
+                        '  <div style="display:flex; align-items:center; gap:12px;">' +
+                        '    <div style="flex:1; min-width:0;">' +
+                        '      <div style="font-size:14px; line-height:18px;">' + highlightByPositions(titleName, r.positionsName) + '</div>' +
+                        '      <div style="margin-top:4px; font-size:12px; color:#6b7280;">' + subHtml + '</div>' +
+                        '    </div>' +
+                        (options.enableRemoveAction ?
+                        '    <span class="collections-fzf-remove" title="取消收藏" style="flex:none; width:28px; height:28px; border-radius:999px; cursor:pointer; background:rgba(255,77,79,0.08) url(&quot;data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%23ff4d4f\'%3E%3Cpath d=\'M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v8h-2V9zm4 0h2v8h-2V9zM7 9h2v8H7V9z\'/%3E%3C/svg%3E&quot;) no-repeat center; background-size:60%;"></span>' : '') +
+                        '  </div>' +
                         '</div>';
                 }
                 $results.html(html);
@@ -2183,6 +2189,29 @@ function openListQuickSearch(options) {
                 }
             });
 
+            $results.off('click.collectionsRemove').on('click.collectionsRemove', '.collections-fzf-remove', function(e) {
+                var idx = parseInt($(this).closest('.collections-fzf-row').data('idx'), 10);
+                var result = !isNaN(idx) ? state.results[idx] : null;
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (!result) return false;
+
+                removeCollectionItem(result.item, {
+                    onSuccess: function() {
+                        items.splice(result.origIndex, 1);
+                        if (musicList[targetList]) {
+                            musicList[targetList].item = items.slice();
+                        }
+                        state.active = Math.max(0, Math.min(state.active, items.length - 1));
+                        render();
+                        ensureActiveVisible();
+                    }
+                });
+                return false;
+            });
+
             $results.off('mousemove.collectionsSearch').on('mousemove.collectionsSearch', '.collections-fzf-row', function() {
                 var idx = parseInt($(this).data('idx'), 10);
                 if (!isNaN(idx) && idx !== state.active) {
@@ -2210,6 +2239,7 @@ function openListQuickSearch(options) {
 function openCollectionsSearch() {
     openListQuickSearch({
         listIndex: rem.dislist,
+        enableRemoveAction: true,
         validate: function() {
             if (!(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections')) {
                 layer.msg('请先打开“我的收藏”列表');
@@ -2847,6 +2877,35 @@ function toggleCollection(music) {
         },
         error: function(XMLHttpRequest, textStatus, errorThrown) {
             console.error('收藏状态检查失败: ' + XMLHttpRequest.status);
+        }
+    });
+}
+
+// 从收藏列表中移除单首歌曲
+function removeCollectionItem(music, options) {
+    options = options || {};
+    $.ajax({
+        type: mkPlayer.method,
+        url: mkPlayer.api,
+        data: "types=collections&action=remove" +
+              "&id=" + music.id +
+              "&source=" + music.source,
+        dataType: mkPlayer.dataType,
+        success: function(jsonData) {
+            if (jsonData.success) {
+                layer.msg('已取消收藏');
+                if (typeof options.onSuccess === 'function') {
+                    options.onSuccess();
+                } else {
+                    loadCollections();
+                }
+            } else {
+                layer.msg(jsonData.message || '取消收藏失败');
+            }
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown) {
+            layer.msg('取消收藏失败 - ' + XMLHttpRequest.status);
+            console.error(XMLHttpRequest + textStatus + errorThrown);
         }
     });
 }
