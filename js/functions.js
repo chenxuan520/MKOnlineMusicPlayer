@@ -2769,6 +2769,9 @@ function showCommentModal(index) {
     $("#prev-comment").prop("disabled", index === 0);
     $("#next-comment").prop("disabled", index === rem.comments.length - 1);
 
+    // 切换评论时重置内容区滚动位置，避免上一条滚到底后下一条看起来像没切换
+    $(".comment-modal-body").scrollTop(0);
+
     // 显示模态框 - 使用新的CSS类避免跳动
     $("#comment-modal").addClass('show');
 }
