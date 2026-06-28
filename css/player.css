@@ -653,6 +653,50 @@ body {
     cursor: pointer;
 }
 
+/* “检测收藏”状态标记 */
+.list-check-badge {
+    display: inline-block;
+    margin-right: 8px;
+    padding: 0 6px;
+    height: 18px;
+    line-height: 18px;
+    font-size: 12px;
+    border-radius: 9px;
+    vertical-align: middle;
+    background: rgba(255,255,255,.15);
+    color: rgba(225,225,225,.9);
+}
+.list-item.check-pending .list-check-badge {
+    background: rgba(255,193,7,.25);
+    color: #ffca28;
+}
+.list-item.check-ok .list-check-badge {
+    background: rgba(76,175,80,.25);
+    color: #66bb6a;
+}
+.list-item.check-fail {
+    background: rgba(244,67,54,.12);
+}
+.list-item.check-fail .list-check-badge {
+    background: rgba(244,67,54,.3);
+    color: #ef5350;
+}
+.list-item.check-fail .music-name,
+.list-item.check-fail .auth-name,
+.list-item.check-fail .music-album {
+    color: rgba(239,83,80,.85);
+}
+/* “移除失效”按钮上的手动清除入口（纯图标，无边框） */
+.coll-check-cancel {
+    margin-left: 8px;
+    font-size: 14px;
+    color: rgba(225,225,225,.45);
+    cursor: pointer;
+}
+.coll-check-cancel:hover {
+    color: #fff;
+}
+
 /* 以下是歌单 css 样式 */
 /* 歌单中的一项 */
 .sheet-item {

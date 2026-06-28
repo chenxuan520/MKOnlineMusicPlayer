@@ -154,6 +154,65 @@ function ajaxUrl(music, callback)
 
 }
 
+// 检测一首歌“此刻还能不能取到可播放链接”（供“检测收藏”使用）
+// 与 ajaxUrl 保持同一判定口径（含网易云兜底），但有三点不同：
+//   1) 强制重新请求 types=url，不吃 music.url 缓存，避免“假有效”
+//   2) 带重试：网络层失败或拿到空链接都重试，规避临时抖动导致的误判
+//   3) 不调用 updateMinfo，避免污染播放器里现有的 music 数据
+// callback(result)：result = { ok: Boolean, url: String|null }
+function checkMusicUrl(music, callback, opts) {
+    opts = opts || {};
+    var maxAttempts = opts.maxAttempts || 3;            // 含首次，最多尝试 3 次
+    var retryDelays = opts.retryDelays || [500, 1000];  // 各次重试前的退避(ms)
+
+    // id 为空，直接判失效，无需请求
+    if (music.id === null || music.id === undefined || music.id === "") {
+        callback({ ok: false, url: null });
+        return;
+    }
+
+    var attempt = 0;
+
+    function retryOrFail() {
+        if (attempt < maxAttempts) {
+            var delay = retryDelays[attempt - 1];
+            if (delay === undefined) delay = retryDelays[retryDelays.length - 1] || 800;
+            setTimeout(tryOnce, delay);
+        } else {
+            callback({ ok: false, url: null });
+        }
+    }
+
+    function tryOnce() {
+        attempt++;
+        $.ajax({
+            type: mkPlayer.method,
+            url: mkPlayer.api,
+            data: "types=url&id=" + music.id + "&source=" + music.source,
+            dataType: mkPlayer.dataType,
+            success: function(jsonData) {
+                var url = (jsonData && typeof jsonData.url === "string") ? jsonData.url : "";
+
+                // 与 ajaxUrl 一致：网易云拿不到链接时回退 outer 链接，仍视为可播
+                if (music.source == "netease" && url === "") {
+                    url = "https://music.163.com/song/media/outer/url?id=" + music.id + ".mp3";
+                }
+
+                if (url !== "") {
+                    callback({ ok: true, url: url });
+                } else {
+                    retryOrFail();   // 拿到空链接：可能是源临时抖动，重试
+                }
+            },
+            error: function() {
+                retryOrFail();       // 网络层失败：可能是临时抖动，重试
+            }
+        });
+    }
+
+    tryOnce();
+}
+
 // 完善获取音乐封面图
 // 包含音乐信息的数组、回调函数
 function ajaxPic(music, callback)

@@ -887,6 +887,16 @@ function settingsBox() {
                 $(layero).find("input[name='recommend-fav-count']").val(20);
             }
 
+            // 回填“检测重试次数”（默认 3，范围 1~5）
+            try {
+                var checkRetry = parseInt(mkPlayer.checkRetry, 10);
+                if (isNaN(checkRetry) || checkRetry < 1) checkRetry = 3;
+                if (checkRetry > 5) checkRetry = 5;
+                $(layero).find("input[name='check-retry']").val(checkRetry);
+            } catch (e) {
+                $(layero).find("input[name='check-retry']").val(3);
+            }
+
             // 渲染背景设置状态
             var bgType = (mkPlayer.bgConfig && mkPlayer.bgConfig.type) || 'default';
             $(layero).find("input[name='bg-type'][value='" + bgType + "']").prop("checked", true);
@@ -971,6 +981,12 @@ function settingsBox() {
                     recommendFavCount = 20;
                 }
 
+                // 检测重试次数（范围 1~5，默认 3）
+                var checkRetryRaw = $(layero).find("input[name='check-retry']").val();
+                var checkRetry = parseInt(checkRetryRaw, 10);
+                if (isNaN(checkRetry) || checkRetry < 1) checkRetry = 3;
+                if (checkRetry > 5) checkRetry = 5;
+
                 // 获取背景设置
                 var newBgType = $(layero).find("input[name='bg-type']:checked").val();
                 var newBgUrl = $(layero).find("input[name='bg-url']").val();
@@ -990,6 +1006,7 @@ function settingsBox() {
                 mkPlayer.recommendDomain = recommendDomain;
                 mkPlayer.recommendToken = recommendToken;
                 mkPlayer.recommendFavCount = recommendFavCount;
+                mkPlayer.checkRetry = checkRetry;
 
                 mkPlayer.bgConfig = {
                     type: newBgType,
@@ -1005,6 +1022,7 @@ function settingsBox() {
                 playerSavedata('recommendDomain', mkPlayer.recommendDomain);
                 playerSavedata('recommendToken', mkPlayer.recommendToken);
                 playerSavedata('recommendFavCount', mkPlayer.recommendFavCount);
+                playerSavedata('checkRetry', mkPlayer.checkRetry);
                 playerSavedata('bgConfig', mkPlayer.bgConfig);
 
                 // 根据“加载全部列表”开关刷新歌单侧边栏渲染
@@ -1499,6 +1517,9 @@ function loadList(list) {
 
 // 加载收藏列表
 function loadCollections() {
+    // 重新加载收藏时作废上一轮“检测收藏”状态，避免旧检测回调污染新列表
+    rem._collCheck = null;
+
     var tempCollectionIndex = 999; // Use high index to avoid conflicts with other lists
 
     dataBox("list");    // 在主界面显示出播放列表
@@ -1551,6 +1572,7 @@ function loadCollections() {
                 addListbar("collections_export");    // 添加导出按钮
                 addListbar("collections_import");    // 添加导入按钮
                 addListbar("collections_search");    // 添加搜索按钮
+                addListbar("collections_check");     // 添加检测有效性按钮
 
                 // 收藏列表不提供“清空列表”：该按钮为通用列表清空入口，但对服务端收藏数据不生效，容易造成误解
             } else {
@@ -1845,6 +1867,10 @@ function addListbar(types) {
 
         case "collections_search":   // 收藏列表搜索
             html = '<div class="list-item text-center list-clickable" id="list-foot" onclick="openCollectionsSearch();">搜索收藏</div>';
+        break;
+
+        case "collections_check":    // 收藏列表有效性检测
+            html = '<div class="list-item text-center list-clickable" id="coll-check-btn" onclick="checkCollections();">检测收藏</div>';
         break;
     }
     rem.mainList.append(html);
@@ -2885,6 +2911,7 @@ function toggleCollection(music) {
 }
 
 // 从收藏列表中移除单首歌曲
+// options: { silent: 不弹 toast 且不自动刷新(交给调用方), onSuccess, onError }
 function removeCollectionItem(music, options) {
     options = options || {};
     $.ajax({
@@ -2896,21 +2923,223 @@ function removeCollectionItem(music, options) {
         dataType: mkPlayer.dataType,
         success: function(jsonData) {
             if (jsonData.success) {
-                layer.msg('已取消收藏');
+                if (!options.silent) layer.msg('已取消收藏');
                 if (typeof options.onSuccess === 'function') {
                     options.onSuccess();
                 } else {
                     loadCollections();
                 }
             } else {
-                layer.msg(jsonData.message || '取消收藏失败');
+                if (!options.silent) layer.msg(jsonData.message || '取消收藏失败');
+                if (typeof options.onError === 'function') options.onError();
             }
         },
         error: function(XMLHttpRequest, textStatus, errorThrown) {
-            layer.msg('取消收藏失败 - ' + XMLHttpRequest.status);
+            if (!options.silent) layer.msg('取消收藏失败 - ' + XMLHttpRequest.status);
             console.error(XMLHttpRequest + textStatus + errorThrown);
+            if (typeof options.onError === 'function') options.onError();
         }
     });
+}
+
+// ===================== 检测收藏有效性 =====================
+// 逐首调用 checkMusicUrl（独立请求，不走 play()/listClick()，因此不会触发
+// audioErr/logUnplayableMusic，也不会打断正在播放的歌），用小并发 + 重试判定每首
+// 是否还能取到可播链接；失效项在列表内标红，检测完可一键移除（串行删除 + 二次确认）。
+// 运行态挂在 rem._collCheck，并以该对象作为“本轮身份”，切列表/重载收藏即作废旧轮。
+
+// 更新某个收藏列表项的检测状态标记
+// index：收藏列表内下标（与 data-no 一致）；status：'pending' | 'ok' | 'fail'
+function markCollectionItem(index, status) {
+    // 仅在“我的收藏”列表下标记，避免切到别的列表时误标同号项
+    if (!(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections')) return;
+
+    var $item = $('.list-item[data-no="' + index + '"]');
+    if (!$item.length) return;
+
+    var $badge = $item.find('.list-check-badge');
+    if (!$badge.length) {
+        $badge = $('<span class="list-check-badge"></span>');
+        // 歌名在 hover 后会被懒加载逻辑包进 .music-name-cult（display:block）。
+        // badge 是 inline-block，若插到 .music-name 外层，会把 block 的歌名挤到第二行，
+        // 被 .list-item 的 overflow:hidden 裁掉而“消失”。因此优先插到 cult 内部、与歌名同行。
+        var $nameTarget = $item.find('.music-name-cult');
+        if (!$nameTarget.length) $nameTarget = $item.find('.music-name');
+        $nameTarget.prepend($badge);
+    }
+
+    $item.removeClass('check-pending check-ok check-fail');
+    if (status === 'pending') {
+        $item.addClass('check-pending');
+        $badge.text('检测中');
+    } else if (status === 'ok') {
+        $item.addClass('check-ok');
+        $badge.text('✓');
+    } else if (status === 'fail') {
+        $item.addClass('check-fail');
+        $badge.text('✗ 失效');
+    }
+}
+
+// 刷新“检测收藏”按钮文案（按钮状态机：空闲 / 检测中 / 完成且有失效）
+function updateCheckButton() {
+    var $btn = $('#coll-check-btn');
+    if (!$btn.length) return;
+    var st = rem._collCheck;
+    if (st && st.running) {
+        $btn.text('检测中 ' + st.done + '/' + st.total + '（点击停止）');
+    } else if (st && st.phase === 'done' && st.failCount > 0) {
+        // “移除”态：额外给一个可独立点击的 ✕，用于手动清除检测结果（不删歌、不刷新列表）
+        $btn.html('移除 ' + st.failCount + ' 首失效收藏' +
+                  '<span class="coll-check-cancel" title="清除检测结果" ' +
+                  'onclick="event.stopPropagation(); cancelCollectionsCheck(); return false;">✕</span>');
+    } else {
+        $btn.text('检测收藏');
+    }
+}
+
+// “检测收藏”按钮点击入口：按阶段决定 开始检测 / 停止 / 移除失效
+function checkCollections() {
+    if (!(rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections')) {
+        layer.msg('请先打开“我的收藏”列表');
+        return;
+    }
+
+    var st = rem._collCheck;
+    if (st && st.running) {          // 检测进行中 → 停止
+        st.stopped = true;
+        return;
+    }
+    if (st && st.phase === 'done' && st.failedItems && st.failedItems.length > 0) {  // 已完成且有失效 → 移除
+        removeFailedCollections(st.failedItems.slice());
+        return;
+    }
+    startCollectionsCheck();         // 否则开始新一轮检测
+}
+
+// 启动一轮检测（小并发调度）
+function startCollectionsCheck() {
+    var items = (musicList[rem.dislist] && musicList[rem.dislist].item) ? musicList[rem.dislist].item : [];
+    if (!items.length) {
+        layer.msg('收藏列表为空');
+        return;
+    }
+
+    var st = {
+        running: true,
+        stopped: false,
+        phase: 'running',
+        total: items.length,
+        done: 0,
+        failCount: 0,
+        failedItems: []
+    };
+    rem._collCheck = st;
+
+    // 清掉上一轮的标记
+    $('.list-item').removeClass('check-pending check-ok check-fail');
+    $('.list-check-badge').remove();
+    updateCheckButton();
+
+    var concurrency = 3;   // 小并发，兼顾速度与不压垮后端/源
+    var cursor = 0;        // 下一个待检测下标
+    var inFlight = 0;      // 在途请求数
+
+    function isActive() { return rem._collCheck === st; }   // 本轮是否仍有效
+
+    function endCheck() {
+        if (!isActive()) return;
+        st.running = false;
+        st.phase = 'done';
+        updateCheckButton();
+        if (st.stopped) {
+            layer.msg('已停止检测（' + st.done + '/' + st.total + '）');
+        } else if (st.failCount === 0) {
+            layer.msg('检测完成：' + st.total + ' 首收藏均可正常获取链接');
+        } else {
+            layer.msg('检测完成：发现 ' + st.failCount + ' 首失效，点底部按钮可一键移除');
+        }
+    }
+
+    function finishOne(index, result, music) {
+        if (!isActive()) return;
+        inFlight--;
+        st.done++;
+        if (result && result.ok) {
+            markCollectionItem(index, 'ok');
+        } else {
+            st.failCount++;
+            st.failedItems.push(music);
+            markCollectionItem(index, 'fail');
+        }
+        updateCheckButton();
+        pump();
+    }
+
+    function pump() {
+        if (!isActive()) return;
+        if (st.stopped) {            // 用户中途停止：等在途请求收完即结束
+            if (inFlight === 0) endCheck();
+            return;
+        }
+        while (inFlight < concurrency && cursor < items.length) {
+            var index = cursor++;
+            var music = items[index];
+            inFlight++;
+            markCollectionItem(index, 'pending');
+            (function(idx, m) {
+                checkMusicUrl(m, function(result) { finishOne(idx, result, m); }, { maxAttempts: mkPlayer.checkRetry });
+            })(index, music);
+        }
+        if (inFlight === 0 && cursor >= items.length) endCheck();
+    }
+
+    pump();
+}
+
+// 一键移除全部失效收藏：二次确认 + 串行删除（避免并发读改写 collections.json 互相覆盖）
+function removeFailedCollections(failedItems) {
+    if (!failedItems || !failedItems.length) {
+        layer.msg('没有需要移除的失效收藏');
+        return;
+    }
+
+    layer.confirm('确认从收藏中移除这 ' + failedItems.length + ' 首无法获取播放链接的歌曲？', {
+        title: '移除失效收藏',
+        btn: ['移除', '取消']
+    }, function(confirmIndex) {
+        layer.close(confirmIndex);
+
+        var loadingIndex = layer.msg('正在移除…', { icon: 16, time: 0, shade: 0.1 });
+        var i = 0;
+        var removed = 0;
+
+        function next() {
+            if (i >= failedItems.length) {
+                layer.close(loadingIndex);
+                rem._collCheck = null;     // 收藏已变化，作废本轮检测结果
+                loadCollections();         // 重建列表（重新生成检测按钮、清除标记）
+                layer.msg('已移除 ' + removed + ' 首失效收藏');
+                return;
+            }
+            // 串行：上一首删完再删下一首
+            removeCollectionItem(failedItems[i++], {
+                silent: true,
+                onSuccess: function() { removed++; next(); },
+                onError: function() { next(); }
+            });
+        }
+        next();
+    });
+}
+
+// 手动清除“检测收藏”的结果与标记（不删歌、不刷新列表），按钮回到“检测收藏”
+function cancelCollectionsCheck() {
+    rem._collCheck = null;
+    $('.list-item').removeClass('check-pending check-ok check-fail');
+    $('.list-check-badge').remove();
+    updateCheckButton();
+    layer.msg('已清除检测结果');
 }
 
 // 重写评论函数，使其点击时显示当前正在显示的评论

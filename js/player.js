@@ -30,6 +30,7 @@ var mkPlayer = {
     recommendDomain: '', // 推荐服务域名
     recommendToken: '', // 推荐服务 Token
     recommendFavCount: 20, // 推荐时参考的收藏数量（默认沿用历史行为：20）
+    checkRetry: 3, // “检测收藏”每首最多尝试次数（含首次，范围 1~5）
     bgConfig: { type: 'default', url: '' } // 背景设置配置
 };
 
@@ -83,6 +84,17 @@ $(function() {
         var parsedFavCount = parseInt(storedRecommendFavCount, 10);
         if (!isNaN(parsedFavCount) && parsedFavCount > 0) {
             mkPlayer.recommendFavCount = parsedFavCount;
+        }
+    }
+
+    // 读取“检测收藏”重试次数（范围 1~5）
+    var storedCheckRetry = playerReaddata('checkRetry');
+    if (storedCheckRetry !== null && storedCheckRetry !== undefined) {
+        var parsedCheckRetry = parseInt(storedCheckRetry, 10);
+        if (!isNaN(parsedCheckRetry)) {
+            if (parsedCheckRetry < 1) parsedCheckRetry = 1;
+            if (parsedCheckRetry > 5) parsedCheckRetry = 5;
+            mkPlayer.checkRetry = parsedCheckRetry;
         }
     }
 

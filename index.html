@@ -326,6 +326,18 @@
                 </div>
             </div>
 
+            <fieldset class="layui-elem-field layui-field-title" style="margin-top: 20px;">
+                <legend style="font-size: 14px;">收藏设置</legend>
+            </fieldset>
+
+            <div class="layui-form-item">
+                <label class="layui-form-label" style="width: 80px; padding: 9px 0; text-align: left;">检测重试</label>
+                <div class="layui-input-block" style="margin-left: 90px;">
+                    <input type="number" name="check-retry" placeholder="默认 3" autocomplete="off" class="layui-input" min="1" max="5" step="1">
+                    <div class="layui-form-mid layui-word-aux" style="float: none; font-size: 12px;">“检测收藏”每首最多尝试次数（含首次，范围 1~5）；越大越能扛网络抖动但越慢</div>
+                </div>
+            </div>
+
             <div class="layui-form-item" style="text-align: center; margin-top: 30px;">
                 <button class="layui-btn" lay-submit lay-filter="settings-submit">保存设置</button>
                 <button type="button" class="layui-btn layui-btn-primary" onclick="layer.closeAll('page')">取消</button>
