@@ -27,6 +27,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // 复用 debug keystore 签名，避免 CI 上 unsigned APK 上传失败；正式发布请改用独立秘钥
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
