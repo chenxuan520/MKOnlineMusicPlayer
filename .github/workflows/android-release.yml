@@ -1,9 +1,12 @@
-name: Release APK (Tag)
+name: Release APK
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.0-android)'
+        required: true
+        type: string
 
 jobs:
   release:
@@ -36,17 +39,16 @@ jobs:
 
       - name: Rename APK with tag
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
+          TAG=${{ github.event.inputs.tag }}
           mv android/app/build/outputs/apk/release/app-release.apk \
              android/app/build/outputs/apk/release/MKOnlineMusicPlayer-${TAG}.apk
           echo "APK_NAME=MKOnlineMusicPlayer-${TAG}.apk" >> $GITHUB_ENV
 
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: android/app/build/outputs/apk/release/${{ env.APK_NAME }}
-          generate_release_notes: true
-          draft: false
-          prerelease: ${{ contains(GITHUB_REF_NAME, 'beta') || contains(GITHUB_REF_NAME, 'alpha') || contains(GITHUB_REF_NAME, 'rc') }}
+      - name: Create GitHub Release
+        run: |
+          gh release create "${{ github.event.inputs.tag }}" \
+            --title "${{ github.event.inputs.tag }}" \
+            --notes "Android APK build" \
+            "android/app/build/outputs/apk/release/MKOnlineMusicPlayer-${{ github.event.inputs.tag }}.apk"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
