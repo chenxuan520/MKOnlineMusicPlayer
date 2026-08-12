@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 挂件背景：深色圆角，半透不出毛玻璃效果（RemoteViews 不支持模糊） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#F21C2330" />
+    <corners android:radius="16dp" />
+</shape>

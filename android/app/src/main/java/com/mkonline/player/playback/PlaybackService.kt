@@ -6,6 +6,8 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -15,6 +17,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.mkonline.player.MkApp
+import com.mkonline.player.widget.PlayerWidgetProvider
 import java.io.IOException
 
 /**
@@ -61,7 +64,27 @@ class PlaybackService : MediaSessionService() {
             setWakeMode(C.WAKE_MODE_LOCAL)
         }
 
+        // 切歌/播放态/元数据变化时推送状态到桌面部件
+        player.addListener(object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = pushToWidget(player)
+            override fun onIsPlayingChanged(isPlaying: Boolean) = pushToWidget(player)
+            override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) = pushToWidget(player)
+        })
+
         mediaSession = MediaSession.Builder(this, player).build()
+    }
+
+    private fun pushToWidget(player: Player) {
+        val meta = player.mediaMetadata
+        PlayerWidgetProvider.updateFromService(
+            this,
+            title = meta.title?.toString() ?: "",
+            artist = meta.artist?.toString() ?: "",
+            art = meta.artworkUri?.toString() ?: "",
+            playing = player.isPlaying,
+            posMs = player.currentPosition.coerceAtLeast(0L),
+            durMs = player.duration.coerceAtLeast(0L),
+        )
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
@@ -76,6 +99,11 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        // 服务结束时把暂停态推给挂件，避免界面残留"播放中"
+        PlayerWidgetProvider.updateFromService(
+            this,
+            title = "", artist = "", art = "", playing = false,
+        )
         mediaSession?.run {
             player.release()
             release()

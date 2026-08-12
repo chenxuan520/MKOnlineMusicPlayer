@@ -272,6 +272,11 @@ class PlayerManager(
                         queue.indexOfFirst { it.key == song.key }.takeIf { it >= 0 }?.let { i ->
                             queue[i] = queue[i].copy(pic = pic)
                             queueState.value = queue.toList()
+                            // 同步更新播放器内该 MediaItem 的封面（桌面部件/通知栏用）
+                            val c = controller
+                            if (c != null && i == c.currentMediaItemIndex) {
+                                c.replaceMediaItem(i, toMediaItem(queue[i]))
+                            }
                         }
                         // 持久化队列（含封面），下次启动恢复时直接可用
                         persistQueue()
