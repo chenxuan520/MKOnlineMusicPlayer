@@ -19,6 +19,7 @@ MKOnlineMusicPlayer 是一个运行在浏览器里的在线音乐播放器。
 
 - 页面入口：`index.html`
 - 后端 API：`api.php`
+- Android 客户端：`android/`（原生 Kotlin + Compose + Media3，共用同一后端 `api.php`；构建说明见 `android/README.md`）
 
 ## 2) 启动与常用命令
 
@@ -41,6 +42,12 @@ MKOnlineMusicPlayer 是一个运行在浏览器里的在线音乐播放器。
 - 示例配置：`nginx.conf`
   - 将 `/api/v1/recommend/` 转发到 `http://127.0.0.1:8080`
   - 其余路径转发到 PHP 应用 upstream（`webapp`）
+
+**Android 客户端**
+
+- 目录：`android/`
+- 构建：GitHub Actions 自动构建（提交/PR 到 `android/` 触发 Debug，打 `v*` tag 触发 Release 上传），或命令行 `cd android && ./gradlew assembleDebug`（需 JDK 17、Android SDK 35）
+- 详见：`android/README.md`
 
 ## 3) 代码风格与约定
 

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  自建 api.php 常常跑在 http 上，酷狗/QQ 等音源返回的直链也多为 http，
+  因此这里放开明文流量。若你的部署全链路都是 https，可把 cleartextTrafficPermitted 改为 false。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
