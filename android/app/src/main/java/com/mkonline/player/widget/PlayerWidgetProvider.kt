@@ -107,9 +107,6 @@ class PlayerWidgetProvider : AppWidgetProvider() {
                 R.id.widget_play,
                 if (playing) R.drawable.widget_ic_pause else R.drawable.widget_ic_play,
             )
-            // 进度条：0~1000 映射当前位置
-            val progress = if (durMs > 0) ((posMs * 1000) / durMs).toInt().coerceIn(0, 1000) else 0
-            views.setProgressBar(R.id.widget_progress, 1000, progress, false)
             if (artBitmap != null) {
                 views.setImageViewBitmap(R.id.widget_cover, artBitmap)
             } else {
