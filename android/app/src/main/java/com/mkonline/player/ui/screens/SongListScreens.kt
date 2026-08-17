@@ -109,7 +109,7 @@ fun CollectionsScreen(container: AppContainer, onOpenComments: (Song) -> Unit) {
     var detectText by remember { mutableStateOf("") }
     var deadKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    /** 逐首调 types=url 验证可播放性（含 3 次重试，对齐 Web 端）。 */
+    /** 逐首探测真实可播放性（新鲜解析 + Range GET 验证 CDN，含 3 次重试）。 */
     fun detect() {
         if (detecting || list.isEmpty()) return
         detecting = true
@@ -121,9 +121,8 @@ fun CollectionsScreen(container: AppContainer, onOpenComments: (Song) -> Unit) {
                 var ok = false
                 repeat(3) { attempt ->
                     if (!ok) {
-                        val url = runCatching { api.songUrl(song) }.getOrDefault("")
-                        if (url.isNotEmpty()) ok = true
-                        else kotlinx.coroutines.delay(if (attempt == 0) 500L else 1000L)
+                        ok = runCatching { api.probePlayable(song) }.getOrDefault(false)
+                        if (!ok) kotlinx.coroutines.delay(if (attempt == 0) 500L else 1000L)
                     }
                 }
                 if (!ok) {

@@ -34,6 +34,12 @@ class Api(private val settings: () -> Settings) {
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
 
+    /** 探测 CDN 可达性用：短超时，避免检测流程被单首慢响应拖住。 */
+    private val probeClient = client.newBuilder()
+        .connectTimeout(6, TimeUnit.SECONDS)
+        .readTimeout(6, TimeUnit.SECONDS)
+        .build()
+
     // ---------- 地址规范化 ----------
 
     /** serverUrl 兼容填 "http://host"、“host”、“http://host/子目录” 或完整 api.php 地址。 */
@@ -129,6 +135,24 @@ class Api(private val settings: () -> Settings) {
     suspend fun songUrl(song: Song): String {
         if (song.url.isNotEmpty()) return song.url
         return withContext(Dispatchers.IO) { songUrlBlocking(song.source, song.id.ifEmpty { song.urlId }) }
+    }
+
+    /**
+     * 收藏有效性探测：新鲜解析播放地址（不走 song.url 短路）后，对 CDN 真实发
+     * Range GET 验证可达（跟随重定向），避免“API 返回了链接但实际 403/404”的误报
+     * —— 比 Web 端 checkMusicUrl 更严格，因为后者只看 API 层非空。
+     */
+    suspend fun probePlayable(song: Song): Boolean = withContext(Dispatchers.IO) {
+        val url = songUrlBlocking(song.source, song.id.ifEmpty { song.urlId })
+        if (url.isEmpty()) return@withContext false
+        runCatching {
+            probeClient.newCall(
+                Request.Builder().url(url)
+                    .header("Range", "bytes=0-0")
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36")
+                    .build()
+            ).execute().use { it.code in 200..399 }
+        }.getOrDefault(false)
     }
 
     // ---------- 封面 ----------
