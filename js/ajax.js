@@ -154,11 +154,45 @@ function ajaxUrl(music, callback)
 
 }
 
-// 检测一首歌“此刻还能不能取到可播放链接”（供“检测收藏”使用）
-// 与 ajaxUrl 保持同一判定口径（含网易云兜底），但有三点不同：
+// 用临时 <audio> 真实探测播放地址是否可播（与实际播放完全同链路）：
+// API 只校验“能解析出链接”，但 VIP/下架/链接过期 时 CDN 仍可能 403/404，
+// 只有媒体元素真实去请求才会暴露（loadedmetadata=可播 / error 或超时=不可播）。
+// cb(ok: Boolean)
+function probeMediaPlayable(url, cb) {
+    var finished = false;
+    var media = null;
+    var timer = setTimeout(function() { finish(false); }, 8000);
+
+    function finish(ok) {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        if (media) {
+            media.removeAttribute('src');   // 中断加载
+            media.load();
+            media = null;
+        }
+        cb(ok);
+    }
+
+    try {
+        media = new Audio();
+        media.preload = 'auto';
+        media.addEventListener('loadedmetadata', function() { finish(true); });
+        media.addEventListener('error', function() { finish(false); });
+        media.src = url;
+    } catch (e) {
+        finish(false);
+    }
+}
+
+// 检测一首歌“此刻到底能不能播”（供“检测收藏”使用）
+// 与 ajaxUrl 保持同一判定口径（含网易云兜底），但有四点不同：
 //   1) 强制重新请求 types=url，不吃 music.url 缓存，避免“假有效”
-//   2) 带重试：网络层失败或拿到空链接都重试，规避临时抖动导致的误判
-//   3) 不调用 updateMinfo，避免污染播放器里现有的 music 数据
+//   2) 解析出链接后再用 <audio> 真实探活（probeMediaPlayable），
+//      避免“能解析但 CDN 403/404 / 下架”的误判
+//   3) 带重试：网络层失败、空链接、探活失败 都会重试，规避临时抖动误判
+//   4) 不调用 updateMinfo，避免污染播放器里现有的 music 数据
 // callback(result)：result = { ok: Boolean, url: String|null }
 function checkMusicUrl(music, callback, opts) {
     opts = opts || {};
@@ -193,16 +227,25 @@ function checkMusicUrl(music, callback, opts) {
             success: function(jsonData) {
                 var url = (jsonData && typeof jsonData.url === "string") ? jsonData.url : "";
 
-                // 与 ajaxUrl 一致：网易云拿不到链接时回退 outer 链接，仍视为可播
+                // 与 ajaxUrl 一致：网易云拿不到链接时回退 outer 链接
                 if (music.source == "netease" && url === "") {
                     url = "https://music.163.com/song/media/outer/url?id=" + music.id + ".mp3";
                 }
 
-                if (url !== "") {
-                    callback({ ok: true, url: url });
-                } else {
+                if (url === "") {
                     retryOrFail();   // 拿到空链接：可能是源临时抖动，重试
+                    return;
                 }
+
+                // 关键：链接“解析出”不等于“能播”——对真实地址做媒体级探测（与实际播放同链路）。
+                // 下架曲（outer url 302 到 404）、VIP 防盗链 403、链接过期 都会被真实拦出来。
+                probeMediaPlayable(url, function(playable) {
+                    if (playable) {
+                        callback({ ok: true, url: url });
+                    } else {
+                        retryOrFail();   // 探活失败视为本次失败，重试
+                    }
+                });
             },
             error: function() {
                 retryOrFail();       // 网络层失败：可能是临时抖动，重试
