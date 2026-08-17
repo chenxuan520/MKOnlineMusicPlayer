@@ -38,6 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.mkonline.player.AppContainer
+import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.withPermit
 import com.mkonline.player.data.Song
 import com.mkonline.player.ui.components.EmptyHint
 import com.mkonline.player.ui.components.LoadingBox
@@ -109,26 +111,36 @@ fun CollectionsScreen(container: AppContainer, onOpenComments: (Song) -> Unit) {
     var detectText by remember { mutableStateOf("") }
     var deadKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    /** 逐首探测真实可播放性（新鲜解析 + Range GET 验证 CDN，含 3 次重试）。 */
+    /** 并发探测真实可播放性（新鲜解析 + Range GET 验证 CDN，单首含 3 次重试，限 4 路并发）。 */
     fun detect() {
         if (detecting || list.isEmpty()) return
         detecting = true
         deadKeys = emptySet()
         scope.launch {
+            val songs = list.toList()
+            // 状态写回都在 Main 调度器上（probePlayable 内部才切 IO），普通 list/计数即可
             val dead = mutableListOf<Song>()
-            list.toList().forEachIndexed { idx, song ->
-                detectText = "检测中 ${idx + 1}/${list.size}"
-                var ok = false
-                repeat(3) { attempt ->
-                    if (!ok) {
-                        ok = runCatching { api.probePlayable(song) }.getOrDefault(false)
-                        if (!ok) kotlinx.coroutines.delay(if (attempt == 0) 500L else 1000L)
+            val done = java.util.concurrent.atomic.AtomicInteger(0)
+            val sem = kotlinx.coroutines.sync.Semaphore(4)
+            kotlinx.coroutines.coroutineScope {
+                songs.map { song ->
+                    async {
+                        sem.withPermit {
+                            var ok = false
+                            repeat(3) { attempt ->
+                                if (!ok) {
+                                    ok = runCatching { api.probePlayable(song) }.getOrDefault(false)
+                                    if (!ok) kotlinx.coroutines.delay(if (attempt == 0) 500L else 1000L)
+                                }
+                            }
+                            if (!ok) {
+                                dead.add(song)
+                                deadKeys = deadKeys + song.key
+                            }
+                            detectText = "检测中 ${done.incrementAndGet()}/${songs.size}"
+                        }
                     }
-                }
-                if (!ok) {
-                    dead.add(song)
-                    deadKeys = deadKeys + song.key
-                }
+                }.forEach { it.await() }
             }
             detecting = false
             detectText = ""
