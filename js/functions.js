@@ -3097,7 +3097,28 @@ function startCollectionsCheck() {
     pump();
 }
 
+// 复制文本到剪贴板：优先 navigator.clipboard（SecureContext），
+// 非安全上下文（如 http://局域网IP）退化到 textarea + execCommand。
+function copyTextToClipboard(text) {
+    function fallback() {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(fallback);
+    } else {
+        fallback();
+    }
+}
+
 // 一键移除全部失效收藏：二次确认 + 串行删除（避免并发读改写 collections.json 互相覆盖）
+// 若有删除失败的歌曲，自动把失效歌名复制到剪贴板兜底（否则列表重建后用户无从得知哪些歌没了）
 function removeFailedCollections(failedItems) {
     if (!failedItems || !failedItems.length) {
         layer.msg('没有需要移除的失效收藏');
@@ -3113,20 +3134,33 @@ function removeFailedCollections(failedItems) {
         var loadingIndex = layer.msg('正在移除…', { icon: 16, time: 0, shade: 0.1 });
         var i = 0;
         var removed = 0;
+        var failedRemovals = [];
 
         function next() {
             if (i >= failedItems.length) {
                 layer.close(loadingIndex);
                 rem._collCheck = null;     // 收藏已变化，作废本轮检测结果
                 loadCollections();         // 重建列表（重新生成检测按钮、清除标记）
-                layer.msg('已移除 ' + removed + ' 首失效收藏');
+                if (failedRemovals.length) {
+                    // 删除不生效的兜底：把失效歌名复制到剪贴板，用户至少知道哪些歌没了
+                    var lines = failedRemovals.map(function(m) {
+                        var artist = $.isArray(m.artist) ? m.artist[0] : (m.artist || '');
+                        return (m.name || '') + (artist ? ' - ' + artist : '');
+                    }).join('\n');
+                    copyTextToClipboard(lines);
+                    layer.msg('已移除 ' + removed + ' 首，' + failedRemovals.length +
+                              ' 首移除失败（失效歌名已复制到剪贴板）', { time: 5000 });
+                } else {
+                    layer.msg('已移除 ' + removed + ' 首失效收藏');
+                }
                 return;
             }
             // 串行：上一首删完再删下一首
-            removeCollectionItem(failedItems[i++], {
+            var music = failedItems[i++];
+            removeCollectionItem(music, {
                 silent: true,
                 onSuccess: function() { removed++; next(); },
-                onError: function() { next(); }
+                onError: function() { failedRemovals.push(music); next(); }
             });
         }
         next();
