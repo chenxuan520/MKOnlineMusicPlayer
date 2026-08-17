@@ -418,7 +418,8 @@ switch($types)   // 根据请求的 Api，执行相应操作
                 break;
 
             case 'list':
-                $response = array('success' => true, 'collections' => $collections);
+                // 文件序为“追加=最早在前”，返回时反转为最新在前（时间倒序），App/Web 共用
+                $response = array('success' => true, 'collections' => array_reverse($collections));
                 break;
 
             case 'check':
@@ -454,8 +455,9 @@ switch($types)   // 根据请求的 Api，执行相应操作
                         sort($newIds);
 
                         if ($existingIds === $newIds) {
-                            // 保存重新排序后的收藏列表
-                            file_put_contents($collectionFile, json_encode($reorderedCollections));
+                            // 客户端发来的是“显示序”（最新在前），落盘前反转回文件序（最早在前），
+                            // 保持与 list 的 array_reverse 读写对称，用户手动排序不会被翻转
+                            file_put_contents($collectionFile, json_encode(array_reverse($reorderedCollections)));
                             $response = array('success' => true, 'message' => '收藏列表排序已保存');
                         } else {
                             $response = array('success' => false, 'message' => '排序数据不一致');
