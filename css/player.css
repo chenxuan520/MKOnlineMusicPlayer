@@ -1366,3 +1366,97 @@ body {
     opacity: 0.8;
     border: none;
 }
+
+/* ===================== 失效清除记录弹窗 ===================== */
+.removed-box {
+    padding: 12px 15px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.removed-tips {
+    color: #999;
+    font-size: 12px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.removed-list {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.removed-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+}
+
+.removed-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.removed-title {
+    font-size: 13px;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.removed-time {
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+}
+
+.removed-ops {
+    flex-shrink: 0;
+    margin-left: 10px;
+}
+
+.removed-op {
+    cursor: pointer;
+    font-size: 12px;
+    color: #31c27c;
+    margin-left: 12px;
+    user-select: none;
+}
+
+.removed-op:hover {
+    opacity: 0.8;
+}
+
+.removed-op.del {
+    color: #e15f64;
+}
+
+.removed-footer {
+    text-align: center;
+    padding: 10px 0 2px;
+    flex-shrink: 0;
+}
+
+.removed-clear {
+    cursor: pointer;
+    color: #e15f64;
+    font-size: 12px;
+    user-select: none;
+}
+
+.removed-clear:hover {
+    opacity: 0.8;
+}
+
+.removed-empty {
+    text-align: center;
+    color: #999;
+    padding: 40px 0;
+    font-size: 13px;
+}

@@ -339,6 +339,8 @@ switch($types)   // 根据请求的 Api，执行相应操作
         $lyric_id = getParam('lyric_id'); // song lyric_id
 
         $collectionFile = 'collections/collections.json';
+        $removedFile = 'collections/removed.json';   // 因失效被移除的歌曲记录（供查看/恢复/清空）
+
 
         // Ensure collections directory exists with proper permissions for Docker environment
         if (!is_dir('collections')) {
@@ -400,9 +402,12 @@ switch($types)   // 根据请求的 Api，执行相应操作
                 break;
 
             case 'remove':
+                $reason = getParam('reason');    // 移除原因：failed = 因失效被一键清除（写入清除记录）
                 $songRemoved = false;
+                $removedSong = null;
                 foreach($collections as $key => $song) {
                     if ($song['id'] == $id && $song['source'] == $source) {
+                        $removedSong = $song;    // 先留存完整信息，删除成功后写入清除记录
                         array_splice($collections, $key, 1);
                         $songRemoved = true;
                         break;
@@ -411,6 +416,25 @@ switch($types)   // 根据请求的 Api，执行相应操作
 
                 if ($songRemoved) {
                     file_put_contents($collectionFile, json_encode($collections));
+
+                    // 因失效被清除的歌写入清除记录（同 id+source 去重，保留最新一条）
+                    if ($reason === 'failed' && $removedSong) {
+                        $removedList = array();
+                        if (file_exists($removedFile)) {
+                            $removedList = json_decode(file_get_contents($removedFile), true);
+                            if (!is_array($removedList)) $removedList = array();
+                        }
+                        foreach($removedList as $k => $s) {
+                            if ($s['id'] == $id && $s['source'] == $source) {
+                                array_splice($removedList, $k, 1);
+                                break;
+                            }
+                        }
+                        $removedSong['removed_at'] = time();
+                        array_push($removedList, $removedSong);
+                        file_put_contents($removedFile, json_encode($removedList));
+                    }
+
                     $response = array('success' => true, 'message' => '歌曲已取消收藏');
                 } else {
                     $response = array('success' => false, 'message' => '歌曲不在收藏列表中');
@@ -468,6 +492,123 @@ switch($types)   // 根据请求的 Api，执行相应操作
                 } else {
                     $response = array('success' => false, 'message' => '缺少排序数据');
                 }
+                break;
+
+            case 'removed_list':    // 查看因失效被清除的歌曲记录（最新在前）
+                $removedList = array();
+                if (file_exists($removedFile)) {
+                    $removedList = json_decode(file_get_contents($removedFile), true);
+                    if (!is_array($removedList)) $removedList = array();
+                }
+                $response = array('success' => true, 'removed' => array_reverse($removedList));
+                break;
+
+            case 'removed_add':  // 补写清除记录（普通取消收藏后，前端探活确认失效时调用）
+                // 仍在收藏中的不记录（避免“取消后马上重新收藏”的竞态写入无用记录）
+                $inCollection = false;
+                foreach($collections as $song) {
+                    if ($song['id'] == $id && $song['source'] == $source) {
+                        $inCollection = true;
+                        break;
+                    }
+                }
+                if ($inCollection) {
+                    $response = array('success' => true, 'message' => '歌曲仍在收藏中，跳过记录');
+                    break;
+                }
+
+                $removedList = array();
+                if (file_exists($removedFile)) {
+                    $removedList = json_decode(file_get_contents($removedFile), true);
+                    if (!is_array($removedList)) $removedList = array();
+                }
+                // 同 id+source 去重后追加（刷新时间戳），与 remove+reason=failed 的记录口径一致
+                foreach($removedList as $k => $s) {
+                    if ($s['id'] == $id && $s['source'] == $source) {
+                        array_splice($removedList, $k, 1);
+                        break;
+                    }
+                }
+                array_push($removedList, array(
+                    'id' => $id,
+                    'name' => $name,
+                    'artist' => $artist,
+                    'album' => $album,
+                    'source' => $source,
+                    'url_id' => $url_id,
+                    'pic_id' => $pic_id,
+                    'lyric_id' => $lyric_id,
+                    'pic' => $pic,
+                    'removed_at' => time()
+                ));
+                file_put_contents($removedFile, json_encode($removedList));
+                $response = array('success' => true, 'message' => '已写入清除记录');
+                break;
+
+            case 'removed_clear':   // 清空清除记录（不影响收藏本身）
+                file_put_contents($removedFile, json_encode(array()));
+                $response = array('success' => true, 'message' => '清除记录已清空');
+                break;
+
+            case 'removed_remove':  // 删除单条清除记录（不恢复到收藏）
+                $removedList = array();
+                if (file_exists($removedFile)) {
+                    $removedList = json_decode(file_get_contents($removedFile), true);
+                    if (!is_array($removedList)) $removedList = array();
+                }
+                $recordRemoved = false;
+                foreach($removedList as $key => $song) {
+                    if ($song['id'] == $id && $song['source'] == $source) {
+                        array_splice($removedList, $key, 1);
+                        $recordRemoved = true;
+                        break;
+                    }
+                }
+                if ($recordRemoved) {
+                    file_put_contents($removedFile, json_encode($removedList));
+                    $response = array('success' => true, 'message' => '记录已删除');
+                } else {
+                    $response = array('success' => false, 'message' => '记录中不存在该歌曲');
+                }
+                break;
+
+            case 'removed_restore': // 从清除记录恢复歌曲到收藏（并删除该条记录）
+                $removedList = array();
+                if (file_exists($removedFile)) {
+                    $removedList = json_decode(file_get_contents($removedFile), true);
+                    if (!is_array($removedList)) $removedList = array();
+                }
+                $restoreSong = null;
+                foreach($removedList as $key => $song) {
+                    if ($song['id'] == $id && $song['source'] == $source) {
+                        $restoreSong = $song;
+                        array_splice($removedList, $key, 1);
+                        break;
+                    }
+                }
+                if ($restoreSong === null) {
+                    $response = array('success' => false, 'message' => '记录中不存在该歌曲');
+                    break;
+                }
+
+                // 恢复写入前去掉记录用的时间戳字段
+                unset($restoreSong['removed_at']);
+
+                // 若收藏中已存在（比如手动重新收藏过），跳过写入，只清记录
+                $exists = false;
+                foreach($collections as $song) {
+                    if ($song['id'] == $id && $song['source'] == $source) {
+                        $exists = true;
+                        break;
+                    }
+                }
+                if (!$exists) {
+                    array_push($collections, $restoreSong);
+                    file_put_contents($collectionFile, json_encode($collections));
+                }
+                file_put_contents($removedFile, json_encode($removedList));
+
+                $response = array('success' => true, 'message' => $exists ? '歌曲已在收藏中，已删除该记录' : '已恢复到收藏');
                 break;
 
             default:

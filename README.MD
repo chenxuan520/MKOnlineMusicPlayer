@@ -56,6 +56,7 @@ MKOnlineMusicPlayer（ChenPlay 优化版）
 
 ### 其它说明
 - 收藏数据保存在 `collections/collections.json`（由后端 `api.php:308` 维护）。
+- 失效清除记录保存在 `collections/removed.json`：“检测收藏→一键移除失效歌曲”时自动记录（`types=collections&action=remove&reason=failed`），收藏列表底部有“失效清除记录”入口，支持查看 / 恢复到收藏 / 删除单条 / 清空。
 - 播放历史最多 300 条，持久化在本地存储；播放历史仅用于偏好输入，无有效期限制。逻辑位置：`js/functions.js:1655`。
 
 ### 版权与致谢

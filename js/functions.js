@@ -1573,6 +1573,7 @@ function loadCollections() {
                 addListbar("collections_import");    // 添加导入按钮
                 addListbar("collections_search");    // 添加搜索按钮
                 addListbar("collections_check");     // 添加检测有效性按钮
+                addListbar("collections_removed");   // 添加失效清除记录入口
 
                 // 收藏列表不提供“清空列表”：该按钮为通用列表清空入口，但对服务端收藏数据不生效，容易造成误解
             } else {
@@ -1871,6 +1872,10 @@ function addListbar(types) {
 
         case "collections_check":    // 收藏列表有效性检测
             html = '<div class="list-item text-center list-clickable" id="coll-check-btn" onclick="checkCollections();">检测收藏</div>';
+        break;
+
+        case "collections_removed":  // 查看因失效被清除的歌曲记录
+            html = '<div class="list-item text-center list-clickable" onclick="showRemovedCollections();">失效清除记录</div>';
         break;
     }
     rem.mainList.append(html);
@@ -2889,6 +2894,8 @@ function toggleCollection(music) {
                             layer.msg('已收藏');
                         } else {
                             layer.msg('已取消收藏');
+                            // 普通取消收藏 → 异步探活，失效则补进清除记录
+                            checkRemovedAndRecord(music);
                             // 如果当前正在查看收藏列表，刷新列表以移除该项
                             if (rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
                                 loadCollections();
@@ -2910,8 +2917,44 @@ function toggleCollection(music) {
     });
 }
 
+// 普通取消收藏后顺手探活：若歌曲已失效（取不到可播链接），异步补进失效清除记录。
+// 不阻塞取消收藏本身；批量移除失效走 reason=failed 由后端直接记录，不经过这里。
+function checkRemovedAndRecord(music) {
+    if (!music || music.id === null || music.id === undefined || music.id === "") return;
+
+    checkMusicUrl(music, function(result) {
+        if (result.ok) return;   // 仍可播，不属于失效，不记录
+
+        $.ajax({
+            type: mkPlayer.method,
+            url: mkPlayer.api,
+            data: "types=collections&action=removed_add" +
+                  "&id=" + music.id +
+                  "&source=" + music.source +
+                  "&name=" + encodeURIComponent(music.name || '') +
+                  "&artist=" + encodeURIComponent($.isArray(music.artist) ? music.artist[0] : (music.artist || '')) +
+                  "&album=" + encodeURIComponent(music.album || '') +
+                  "&pic=" + encodeURIComponent(music.pic || '') +
+                  "&url_id=" + encodeURIComponent(music.url_id || '') +
+                  "&pic_id=" + encodeURIComponent(music.pic_id || '') +
+                  "&lyric_id=" + encodeURIComponent(music.lyric_id || ''),
+            dataType: mkPlayer.dataType,
+            success: function(jsonData) {
+                if (mkPlayer.debug) {
+                    console.log('取消收藏的歌曲已失效，写入清除记录：', music.name, jsonData);
+                }
+            },
+            error: function() {
+                if (mkPlayer.debug) {
+                    console.warn('失效清除记录补写失败：', music.name);
+                }
+            }
+        });
+    }, { maxAttempts: mkPlayer.checkRetry });
+}
+
 // 从收藏列表中移除单首歌曲
-// options: { silent: 不弹 toast 且不自动刷新(交给调用方), onSuccess, onError }
+// options: { silent: 不弹 toast 且不自动刷新(交给调用方), reason: 移除原因('failed'=因失效被清除,后端会写入清除记录), onSuccess, onError }
 function removeCollectionItem(music, options) {
     options = options || {};
     $.ajax({
@@ -2919,11 +2962,14 @@ function removeCollectionItem(music, options) {
         url: mkPlayer.api,
         data: "types=collections&action=remove" +
               "&id=" + music.id +
-              "&source=" + music.source,
+              "&source=" + music.source +
+              (options.reason ? "&reason=" + encodeURIComponent(options.reason) : ''),
         dataType: mkPlayer.dataType,
         success: function(jsonData) {
             if (jsonData.success) {
                 if (!options.silent) layer.msg('已取消收藏');
+                // 普通取消收藏（未显式声明原因）→ 异步探活，失效则补进清除记录
+                if (!options.reason) checkRemovedAndRecord(music);
                 if (typeof options.onSuccess === 'function') {
                     options.onSuccess();
                 } else {
@@ -3158,6 +3204,7 @@ function removeFailedCollections(failedItems) {
             // 串行：上一首删完再删下一首
             var music = failedItems[i++];
             removeCollectionItem(music, {
+                reason: 'failed',   // 标记为因失效被清除，后端同步写入清除记录（可事后查看/恢复）
                 silent: true,
                 onSuccess: function() { removed++; next(); },
                 onError: function() { failedRemovals.push(music); next(); }
@@ -3174,6 +3221,195 @@ function cancelCollectionsCheck() {
     $('.list-check-badge').remove();
     updateCheckButton();
     layer.msg('已清除检测结果');
+}
+
+// ===================== 失效清除记录 =====================
+// “一键移除失效收藏”（removeFailedCollections）会带 reason=failed，
+// 后端在删除的同时把歌曲完整信息 + removed_at 时间戳写入 collections/removed.json。
+// 这里提供查看 / 恢复到收藏 / 删除单条 / 清空全部 的入口。
+// 弹窗数据缓存在 rem._removedList，条目内联 onclick 只带索引，避免把 id/source 拼进 HTML。
+
+// HTML 转义（歌名/歌手来自各音乐源接口，不转义直接拼接有注入风险）
+function escapeHtmlText(str) {
+    return String(str === undefined || str === null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// 打开“失效清除记录”弹窗
+function showRemovedCollections() {
+    layer.open({
+        type: 1,
+        title: '失效清除记录',
+        area: (document.documentElement.clientWidth < 500 ? ['92%', '70%'] : ['420px', '70%']),
+        shade: [0.25, '#000'],
+        shadeClose: true,
+        content: '<div class="removed-box">' +
+                 '    <div class="removed-tips" id="removed-list-tips">加载中...</div>' +
+                 '    <div class="removed-list" id="removed-list-body"></div>' +
+                 '    <div class="removed-footer"><span class="removed-clear" id="removed-clear-btn">清空全部记录</span></div>' +
+                 '</div>',
+        success: function() {
+            $('#removed-clear-btn').on('click', removedClearAll);
+            refreshRemovedList();
+        },
+        end: function() {
+            rem._removedList = null;   // 关闭弹窗即作废索引缓存（end 在任何关闭路径后触发，含 shadeClose）
+        }
+    });
+}
+
+// 拉取记录并渲染弹窗内容
+function refreshRemovedList() {
+    var $body = $('#removed-list-body');
+    if (!$body.length) return;   // 弹窗已关闭（请求竞态）
+
+    $.ajax({
+        type: mkPlayer.method,
+        url: mkPlayer.api,
+        data: "types=collections&action=removed_list",
+        dataType: mkPlayer.dataType,
+        success: function(jsonData) {
+            if (!(jsonData && jsonData.success)) {
+                $body.html('<div class="removed-empty">记录读取失败</div>');
+                $('#removed-list-tips').text('');
+                return;
+            }
+            var list = jsonData.removed || [];
+            rem._removedList = list;
+
+            $('#removed-list-tips').text(list.length ? ('共 ' + list.length + ' 首歌曲因失效被移除') : '');
+
+            if (!list.length) {
+                $body.html('<div class="removed-empty">暂无清除记录</div>');
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < list.length; i++) {
+                var m = list[i];
+                var artist = $.isArray(m.artist) ? m.artist.join(' / ') : (m.artist || '');
+                var time = m.removed_at ? formatDate(m.removed_at * 1000) : '';
+                html += '<div class="removed-item">' +
+                        '    <div class="removed-info">' +
+                        '        <div class="removed-title">' + escapeHtmlText(m.name || '未知歌曲') + (artist ? (' - ' + escapeHtmlText(artist)) : '') + '</div>' +
+                        (time ? ('        <div class="removed-time">' + time + ' 移除</div>') : '') +
+                        '    </div>' +
+                        '    <div class="removed-ops">' +
+                        '        <span class="removed-op" onclick="removedRestoreSong(' + i + ')" title="恢复到收藏列表">恢复</span>' +
+                        '        <span class="removed-op del" onclick="removedRemoveSong(' + i + ')" title="仅删除这条记录">删除</span>' +
+                        '    </div>' +
+                        '</div>';
+            }
+            $body.html(html);
+        },
+        error: function(XMLHttpRequest) {
+            $body.html('<div class="removed-empty">记录读取失败 - ' + XMLHttpRequest.status + '</div>');
+            $('#removed-list-tips').text('');
+        }
+    });
+}
+
+// 后端对 collections.json / removed.json 的读改写无锁，并发写请求会互相覆盖
+// （removeFailedCollections 因此串行删除）。这里同样防重入：上一个写请求落定前的重复点击直接忽略。
+// in-flight 标志在请求 complete 时复位，此时写操作已在服务端完成，不会与下一个写并发。
+
+// 恢复某条记录到收藏（后端原子完成：写回收藏 + 删记录）
+function removedRestoreSong(index) {
+    if (rem._removedBusy) return;
+    var m = (rem._removedList || [])[index];
+    if (!m) return;
+    rem._removedBusy = true;
+
+    $.ajax({
+        type: mkPlayer.method,
+        url: mkPlayer.api,
+        data: "types=collections&action=removed_restore&id=" + m.id + "&source=" + m.source,
+        dataType: mkPlayer.dataType,
+        success: function(jsonData) {
+            layer.msg(jsonData.message || '已恢复到收藏');
+            refreshRemovedList();
+            // 若当前正显示收藏列表，同步刷新（恢复的歌会出现在最前面）
+            if (rem.dislist >= 0 && musicList[rem.dislist] && musicList[rem.dislist].id === 'collections') {
+                loadCollections();
+            }
+        },
+        error: function(XMLHttpRequest) {
+            layer.msg('恢复失败 - ' + XMLHttpRequest.status);
+        },
+        complete: function() {
+            rem._removedBusy = false;
+        }
+    });
+}
+
+// 仅删除单条记录（不影响收藏）
+function removedRemoveSong(index) {
+    if (rem._removedBusy) return;
+    var m = (rem._removedList || [])[index];
+    if (!m) return;
+    rem._removedBusy = true;
+
+    $.ajax({
+        type: mkPlayer.method,
+        url: mkPlayer.api,
+        data: "types=collections&action=removed_remove&id=" + m.id + "&source=" + m.source,
+        dataType: mkPlayer.dataType,
+        success: function(jsonData) {
+            if (jsonData.success) {
+                layer.msg('记录已删除');
+            } else {
+                layer.msg(jsonData.message || '删除失败');
+            }
+            refreshRemovedList();
+        },
+        error: function(XMLHttpRequest) {
+            layer.msg('删除失败 - ' + XMLHttpRequest.status);
+        },
+        complete: function() {
+            rem._removedBusy = false;
+        }
+    });
+}
+
+// 清空全部清除记录（不影响收藏本身）
+function removedClearAll() {
+    if (rem._removedList && rem._removedList.length) {
+        layer.confirm('确认清空全部 ' + rem._removedList.length + ' 条清除记录？（不影响收藏列表）', {
+            title: '清空清除记录',
+            btn: ['清空', '取消']
+        }, function(confirmIndex) {
+            layer.close(confirmIndex);
+            doRemovedClear();
+        });
+    } else {
+        doRemovedClear();
+    }
+}
+
+function doRemovedClear() {
+    if (rem._removedBusy) return;
+    rem._removedBusy = true;
+
+    $.ajax({
+        type: mkPlayer.method,
+        url: mkPlayer.api,
+        data: "types=collections&action=removed_clear",
+        dataType: mkPlayer.dataType,
+        success: function(jsonData) {
+            layer.msg(jsonData.message || '清除记录已清空');
+            refreshRemovedList();
+        },
+        error: function(XMLHttpRequest) {
+            layer.msg('清空失败 - ' + XMLHttpRequest.status);
+        },
+        complete: function() {
+            rem._removedBusy = false;
+        }
+    });
 }
 
 // 重写评论函数，使其点击时显示当前正在显示的评论
